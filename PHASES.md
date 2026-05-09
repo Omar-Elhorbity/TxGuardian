@@ -57,3 +57,39 @@ A running journal of how TxGuardian was built. Each phase ends with a commit and
 - AI Explainer (Phase 3)
 
 **Next:** Phase 2 — Rule engine (5 active rules) + scorer.
+
+---
+
+## Phase 2 — Decoder, simulation wrapper, rule engine, scorer
+
+**Goal:** Turn parsed transactions into deterministic risk verdicts. The deterministic engine is the source of truth on risk; the LLM never decides.
+
+**Done:**
+- `decode.ts` — produces `DecodedInstruction[]` for the UI and structured `DecodedTokenOp[]` for rules.
+  - SPL Token + Token-2022: Approve, ApproveChecked, Transfer, TransferChecked, SetAuthority, Revoke, Burn, BurnChecked, CloseAccount, MintTo, MintToChecked, InitializeAccount. `u64` amounts decoded as BigInt; `u64::MAX` flagged via `isMaxAmount`. SetAuthority extracts authority type (`MintTokens`, `FreezeAccount`, `AccountOwner`, `CloseAccount`).
+  - Token-2022 extension opcodes (>= 26) marked but not decoded — flagged as "extension instruction" so the user knows there's something extra.
+  - System Program: Transfer, CreateAccount with lamport amounts decoded.
+  - Compute Budget: SetComputeUnitLimit + SetComputeUnitPrice with values decoded.
+  - **Memo program (W011):** memo content is NEVER included in the summary — that text is attacker-controlled and could carry prompt injection. We acknowledge presence and byte length only.
+- `simulate.ts` — `simulateSafely(vtx, connection, timeoutMs)` wraps `connection.simulateTransaction` with `sigVerify: false`, `replaceRecentBlockhash: true`, `commitment: "processed"`, plus a 5s timeout race. Returns `SimulationDelta { ok, error?, tokenDeltas, solDelta }`. Token balance deltas left as v1 enrichment — would require pre-fetching signer's token accounts; static spoof check covers the demo case.
+- `rules/index.ts` — `runRules(ctx)` orchestrator. Defensive: any rule that throws is swallowed, never derails the engine. Rules return `null | TxRiskFlag | TxRiskFlag[]`.
+- `rules/drainer.ts` — `KNOWN_DRAINER_PROGRAM` (high). Lookup against `KNOWN_DRAINER_MAP`. Multiple matches collapsed into one flag with all addresses in evidence.
+- `rules/unknown.ts` — `UNKNOWN_PROGRAM` (medium). Inverse allowlist; drainers excluded to avoid double-flagging.
+- `rules/complexity.ts` — `MULTI_INSTRUCTION_COMPLEXITY` (medium). Threshold: 5+ non-ComputeBudget instructions.
+- `rules/approval.ts` — `FULL_TOKEN_APPROVAL` (high). Fires on Approve/ApproveChecked with `isMaxAmount` or amount ≥ 1e18, OR SetAuthority(AccountOwner) (former "suspicious account delegation" folded in as a sub-case). Distinguishes ownership transfer vs ownership removal.
+- `rules/spoof.ts` — `SIMULATION_SPOOF` (high). Static intent check: any Token Transfer/TransferChecked to a non-signer destination with non-zero amount. Description is honest about scope ("intent–outcome mismatch — verify destinations").
+- `rules/fee.ts` — `UNUSUAL_FEE` (low, bonus). Priority fee ≥ 1M micro-lamports/CU.
+- `scorer.ts` — deterministic 0–100 score. Severity weights: low=10, medium=25, high=45. Level thresholds: 0–24 safe, 25–59 caution, 60–100 danger. Recommendation is **locked to level**, never derived from LLM output.
+
+**Architectural principle reinforced:**
+- The rule engine is the single source of truth on risk.
+- The LLM (Phase 3) only translates flags into prose — it cannot raise, lower, or invent flags.
+- Recommendation strings are enum-locked to riskLevel so the LLM cannot drift.
+
+**Security posture:**
+- All rules are pure functions, no side effects.
+- All rules tolerate malformed input (missing accounts, short data) — `noUncheckedIndexedAccess` enforced statically.
+- Memo data never reaches any LLM-facing path (W011).
+- No address from the parsed transaction is ever used as a key into a code-executing context.
+
+**Next:** Phase 3 — AI explainer + `analyze()` entry point.
