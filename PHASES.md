@@ -127,3 +127,42 @@ A running journal of how TxGuardian was built. Each phase ends with a commit and
 **Status:** SDK is feature-complete for MVP. Ready to be consumed by the Next.js app.
 
 **Next:** Phase 4 — Next.js app shell with the design tokens from `DESIGN.md`.
+
+---
+
+## Phase 4 — Next.js app shell, design tokens, home page
+
+**Goal:** Land the visual foundation. Tokens from `DESIGN.md` need to flow into Tailwind utility classes; the home page needs the side-by-side comparison hero specified in DESIGN.md.
+
+**Done:**
+- `apps/web/package.json` — Next.js 15, React 18.3, Tailwind 3.4, lucide-react, geist font, workspace dep on `@txguardian/sdk`. `transpilePackages: ["@txguardian/sdk"]` in `next.config.ts` so the workspace SDK is bundled directly from TS source (no build step needed for dev).
+- `apps/web/tsconfig.json` — strict + `noUncheckedIndexedAccess`, path alias `@/*` → root.
+- `apps/web/postcss.config.mjs` + `apps/web/tailwind.config.ts` — token bridge so utility classes resolve to CSS variables (`bg-surface-1`, `text-primary`, `border-default`, `risk-danger`, `accent`, etc.).
+- `apps/web/app/globals.css` — full token block from DESIGN.md as `:root` CSS variables. Includes:
+  - Surfaces, borders, text, accent, risk semantics, info, radius, focus ring
+  - Global `:focus-visible` ring (mandatory per accessibility spec)
+  - `::selection` styling, custom scrollbar
+  - `.panel`, `.panel-strong`, `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost` component classes (kept static — no `@apply`)
+  - `prefers-reduced-motion` reduces all transitions to 0.01ms
+- `apps/web/app/layout.tsx` — Geist Sans + Geist Mono via `next/font`, wired into `--font-sans` / `--font-mono` so the design tokens stay the source of truth. Sets `<html lang="en">`, OG metadata.
+- `apps/web/components/Nav.tsx` — sticky top nav with backdrop blur, Shield+text logo, four primary links (Scan, Docs, Playground, About), GitHub icon, primary "Scan a transaction" CTA. Mobile hides the link list (Phase 5/6 will add a mobile tab bar if time).
+- `apps/web/components/Footer.tsx` — minimal footer matching the editorial tone.
+- `apps/web/app/page.tsx` — home page:
+  - Lede + dual CTA (Check a transaction / View the SDK)
+  - **Side-by-side comparison hero** — exactly the component spec from DESIGN.md: "What you'd see" (Phantom preview, neutral) vs "What's actually happening" (TxGuardian, danger badge). Static for MVP performance — animated entrance is a polish task.
+  - "How it works" — 3-step ordered list
+  - SDK callout panel with copy-pasteable install snippet
+  - All headings have `id`s and the section uses `aria-labelledby`
+
+**Design system invariants enforced in code:**
+- No raw hex in any component — all colors come from tokens.
+- Risk colors only appear on actual risk surfaces (the danger verdict on the comparison card). Home page is otherwise 100% neutral palette.
+- One primary action per viewport (the "Check a transaction" CTA in lede).
+- All interactive elements have visible `:focus-visible` ring via global rule.
+
+**Not done by design:**
+- No mobile tab-bar nav yet (acceptable — desktop-first per DESIGN.md "design first at lg")
+- No light theme (explicitly out of MVP scope)
+- No animation/motion polish — DESIGN.md says "subtle, functional, quick"; deferring entrance animations to keep velocity
+
+**Next:** Phase 5 — `/api/analyze` route, `/scan` page, result components, demo fixtures.

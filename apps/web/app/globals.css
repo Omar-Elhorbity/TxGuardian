@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Surfaces */
+    --bg-base: #0f1213;
+    --bg-canvas: #131719;
+    --surface-1: #171c1f;
+    --surface-2: #1d2327;
+    --surface-3: #232a2f;
+
+    /* Borders */
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+
+    /* Text */
+    --text-primary: #eef2f3;
+    --text-secondary: #a7b0b5;
+    --text-muted: #7f8a90;
+
+    /* Accent */
+    --accent: #3e8f96;
+    --accent-hover: #4fa3aa;
+    --accent-soft: rgba(62, 143, 150, 0.14);
+
+    /* Risk semantics */
+    --risk-safe: #4d8f66;
+    --risk-safe-soft: rgba(77, 143, 102, 0.16);
+    --risk-caution: #d0a34b;
+    --risk-caution-soft: rgba(208, 163, 75, 0.16);
+    --risk-danger: #c35b63;
+    --risk-danger-soft: rgba(195, 91, 99, 0.16);
+
+    /* Utility */
+    --info: #5a8fcb;
+    --info-soft: rgba(90, 143, 203, 0.15);
+
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+
+    /* Focus ring (always visible on keyboard nav) */
+    --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
+
+    /* Fonts (next/font fills these in via inline style) */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  html,
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Remove default focus outline; replace with token-based ring on keyboard nav */
+  *:focus {
+    outline: none;
+  }
+  *:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 4px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+
+  /* Scrollbar — subtle, consistent with the surface palette */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-base);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 999px;
+    border: 2px solid var(--bg-base);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+  }
+}
+
+@layer components {
+  /* Reusable surface utility — not via @apply to keep classes static */
+  .panel {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+  }
+  .panel-strong {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+  }
+
+  /* Button base — variants below */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1;
+    transition: background-color 120ms, border-color 120ms, color 120ms;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background-color: var(--accent);
+    color: #0a1416;
+    font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+  .btn-secondary {
+    background-color: var(--surface-2);
+    color: var(--text-primary);
+    border-color: var(--border-default);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--surface-3);
+    border-color: var(--border-strong);
+  }
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--text-primary);
+    background-color: var(--surface-2);
+  }
+}
+
+@layer utilities {
+  /* Reduced motion — disable non-essential transitions */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
