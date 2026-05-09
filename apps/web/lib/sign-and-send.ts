@@ -47,6 +47,11 @@ export function checkSignability(
 /**
  * Sign + send a base64-serialized transaction using the connected wallet.
  * Polls for confirmation up to 30 seconds.
+ *
+ * Failure handling: Phantom often returns a generic "Unexpected error" when
+ * preflight simulation fails on the wallet side. To give the user something
+ * actionable, we re-simulate ourselves on failure and surface the actual
+ * error from the simulation logs.
  */
 export async function signAndSend(
   base64: string,
@@ -81,10 +86,12 @@ export async function signAndSend(
       skipPreflight: false,
     });
   } catch (err) {
-    // Wallet rejected, simulation failed before sending, RPC error, etc.
+    // Phantom and other wallets often return a generic message when preflight
+    // fails. Re-simulate to extract the real reason.
+    const simReason = await postMortemSimulate(vtx, connection);
     return {
       ok: false,
-      error: humanError(err),
+      error: simReason ?? humanError(err),
     };
   }
 
@@ -108,6 +115,65 @@ export async function signAndSend(
   return { ok: true, signature };
 }
 
+/**
+ * Run our own simulation after a wallet send fails, to extract the real
+ * on-chain reason. Returns a human-readable message, or null if simulation
+ * itself succeeded (in which case the failure was probably wallet/network).
+ */
+async function postMortemSimulate(
+  vtx: VersionedTransaction,
+  connection: Connection,
+): Promise<string | null> {
+  let result;
+  try {
+    result = await connection.simulateTransaction(vtx, {
+      sigVerify: false,
+      replaceRecentBlockhash: true,
+      commitment: "processed",
+    });
+  } catch {
+    return null;
+  }
+  const value = result.value;
+  if (!value.err) return null;
+
+  const errStr =
+    typeof value.err === "string" ? value.err : JSON.stringify(value.err);
+  const logs = value.logs ?? [];
+
+  // Specific patterns in priority order.
+  if (
+    /AccountNotFound|account not found|Program (does not exist|not found)|invalid program id/i.test(
+      errStr,
+    ) ||
+    logs.some((l) => /Program does not exist|invalid program/i.test(l))
+  ) {
+    return (
+      "Transaction calls a program that doesn't exist on devnet. " +
+      "If this is one of the sample transactions, that's expected — they " +
+      "intentionally call mock programs to demonstrate detection. The chain " +
+      "rejected what the scanner had already flagged."
+    );
+  }
+
+  if (/InsufficientFunds|insufficient/i.test(errStr)) {
+    return "Insufficient balance to pay fees or rent.";
+  }
+
+  if (/BlockhashNotFound|blockhash/i.test(errStr)) {
+    return "Recent blockhash expired before sending. Refresh and retry.";
+  }
+
+  // Fallback: surface the raw err + the most informative log line if any.
+  const firstFailureLog = logs.find((l) =>
+    /failed|error|invalid/i.test(l),
+  );
+  if (firstFailureLog) {
+    return `Simulation failed: ${firstFailureLog}`;
+  }
+  return `Simulation failed: ${errStr}`;
+}
+
 function humanError(err: unknown): string {
   if (err instanceof Error) {
     const msg = err.message;
@@ -116,6 +182,17 @@ function humanError(err: unknown): string {
     }
     if (/insufficient/i.test(msg)) {
       return "Insufficient balance to pay fees.";
+    }
+    if (/Unexpected error/i.test(msg)) {
+      // Phantom's catchall — we tried to extract a better reason via
+      // postMortemSimulate; if we got here the simulation also succeeded
+      // or didn't reveal anything specific.
+      return (
+        "Wallet returned 'Unexpected error' without details. " +
+        "Most likely cause: the transaction would fail on-chain (e.g. " +
+        "calls a program that doesn't exist on devnet). Check the wallet's " +
+        "developer console for the underlying simulation log."
+      );
     }
     if (/simulate|preflight/i.test(msg)) {
       return `Transaction would fail on-chain: ${msg}`;
