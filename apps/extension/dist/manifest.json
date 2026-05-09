@@ -19,7 +19,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content.ts-loader-CFNPSarj.js"
+        "assets/content.ts-loader-y05O10Uq.js"
       ],
       "matches": [
         "<all_urls>"
@@ -38,8 +38,8 @@
         "page.js.map",
         "assets/chunk-D-iX3o5S.js",
         "assets/chunk-D-iX3o5S.js.map",
-        "assets/chunk-CSy4BWKo.js",
-        "assets/chunk-CSy4BWKo.js.map"
+        "assets/chunk-Bqmq6Jh6.js",
+        "assets/chunk-Bqmq6Jh6.js.map"
       ],
       "use_dynamic_url": false
     }

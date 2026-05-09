@@ -106,7 +106,11 @@ declare global {
   }
 }
 
-console.debug("[TxGuardian] page-context injection active");
+console.log("[TxGuardian] page-context injection active");
+
+// Window marker — type `window.__TXG_LOADED__` in DevTools console to
+// verify the page script ran, without needing to see the log output.
+(window as unknown as { __TXG_LOADED__?: boolean }).__TXG_LOADED__ = true;
 
 function whenAvailable<T>(
   getter: () => T | undefined,
@@ -135,12 +139,12 @@ function rejectionError(): Error {
 function patchProvider(provider: PhantomProvider, label: string): void {
   if (provider.__txgPatched) return;
   provider.__txgPatched = true;
-  console.debug(`[TxGuardian] patching ${label}`);
+  console.log(`[TxGuardian] patching ${label}`);
 
   if (typeof provider.signTransaction === "function") {
     const orig = provider.signTransaction.bind(provider);
     provider.signTransaction = async (tx: AnyTx) => {
-      console.debug("[TxGuardian] intercepted signTransaction");
+      console.log("[TxGuardian] intercepted signTransaction");
       const decision = await analyzeAndAwait([tx]);
       if (decision === "reject") throw rejectionError();
       return orig(tx);
@@ -150,7 +154,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
   if (typeof provider.signAllTransactions === "function") {
     const orig = provider.signAllTransactions.bind(provider);
     provider.signAllTransactions = async (txs: AnyTx[]) => {
-      console.debug("[TxGuardian] intercepted signAllTransactions");
+      console.log("[TxGuardian] intercepted signAllTransactions");
       const decision = await analyzeAndAwait(txs);
       if (decision === "reject") throw rejectionError();
       return orig(txs);
@@ -160,7 +164,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
   if (typeof provider.signAndSendTransaction === "function") {
     const orig = provider.signAndSendTransaction.bind(provider);
     provider.signAndSendTransaction = async (tx: AnyTx, opts?: unknown) => {
-      console.debug("[TxGuardian] intercepted signAndSendTransaction");
+      console.log("[TxGuardian] intercepted signAndSendTransaction");
       const decision = await analyzeAndAwait([tx]);
       if (decision === "reject") throw rejectionError();
       return orig(tx, opts);
@@ -196,7 +200,7 @@ interface WalletStandardWallet {
 function patchWalletStandard(wallet: WalletStandardWallet): void {
   if (wallet.__txgPatched || !wallet.features) return;
   wallet.__txgPatched = true;
-  console.debug(
+  console.log(
     "[TxGuardian] patching wallet (Wallet Standard):",
     Object.keys(wallet.features),
   );
@@ -242,7 +246,7 @@ const walletStandardApi = {
 window.addEventListener(
   "wallet-standard:register-wallet",
   (event) => {
-    console.debug("[TxGuardian] wallet-standard:register-wallet event");
+    console.log("[TxGuardian] wallet-standard:register-wallet event");
     type RegisterEvent = CustomEvent<
       (api: typeof walletStandardApi) => void
     >;
@@ -258,7 +262,7 @@ window.dispatchEvent(
     detail: walletStandardApi,
   }),
 );
-console.debug("[TxGuardian] dispatched wallet-standard:app-ready");
+console.log("[TxGuardian] dispatched wallet-standard:app-ready");
 
 // ============================================================================
 // Analyze + show modal pipeline

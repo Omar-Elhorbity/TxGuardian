@@ -20,7 +20,7 @@ import {
   type AnalyzeResponse,
 } from "./types";
 
-console.debug("[TxGuardian] content-script bridge active");
+console.log("[TxGuardian] content-script bridge active");
 
 // --- 1. Inject the page script into MAIN world ------------------------------
 
