@@ -1,9 +1,16 @@
 /**
- * Content script (ISOLATED world). Bridges page context (window.postMessage)
- * and the service worker (chrome.runtime.sendMessage).
+ * Content script (ISOLATED world). Two responsibilities:
  *
- * Runs at document_start so messages from the page-injected script are
- * caught from the first signing attempt.
+ *   1. Inject src/page.ts into the page DOM as a <script> tag with
+ *      chrome.runtime.getURL("page.js"). Chrome runs script tags
+ *      appended to the page in MAIN world automatically — guaranteed
+ *      MAIN-world execution with the extension's URL as the base.
+ *
+ *   2. Bridge messages between the page (window.postMessage) and the
+ *      service worker (chrome.runtime.sendMessage).
+ *
+ * Runs at document_start so the page script is injected before any of
+ * the dApp's own scripts execute.
  */
 
 import {
@@ -14,6 +21,25 @@ import {
 } from "./types";
 
 console.debug("[TxGuardian] content-script bridge active");
+
+// --- 1. Inject the page script into MAIN world ------------------------------
+
+(function injectPageScript(): void {
+  const script = document.createElement("script");
+  script.src = chrome.runtime.getURL("page.js");
+  script.type = "text/javascript";
+  // Run as soon as it's parsed; remove from DOM after to keep it tidy.
+  // The script's effects (event listeners, patches) persist.
+  script.onload = () => script.remove();
+  script.onerror = (err) =>
+    console.error("[TxGuardian] failed to inject page.js", err);
+
+  // Append to documentElement (not body — body may not exist yet at
+  // document_start) so it runs immediately.
+  (document.head || document.documentElement).prepend(script);
+})();
+
+// --- 2. Message bridge ------------------------------------------------------
 
 window.addEventListener("message", async (event: MessageEvent) => {
   if (event.source !== window) return;
@@ -32,9 +58,6 @@ window.addEventListener("message", async (event: MessageEvent) => {
       origin: req.origin,
     });
     response = result as AnalyzeResponse;
-    // chrome.runtime.sendMessage can return undefined if the worker is
-    // dead; surface that as an explicit failure so page.ts shows the
-    // 'unavailable' modal.
     if (!response) {
       response = {
         type: "ANALYZE_RESPONSE",

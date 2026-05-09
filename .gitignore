@@ -8,6 +8,10 @@ build/
 .next/
 out/
 *.tsbuildinfo
+# Exception: the extension's prebuilt dist is tracked so it can be loaded
+# unpacked from a fresh clone without rebuilding.
+!apps/extension/dist/
+!apps/extension/dist/**
 
 # Environment
 .env

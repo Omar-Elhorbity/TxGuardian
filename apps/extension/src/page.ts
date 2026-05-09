@@ -1,7 +1,10 @@
 /**
- * Page-context injection. Runs in the dApp's own JavaScript world at
- * document_start, BEFORE the dApp's wallet adapter has bound any
- * references. We monkey-patch every signing entry point we know about.
+ * Page-context script. Self-contained — no value imports — so it builds
+ * to a single file. Loaded into MAIN world by the ISOLATED content script
+ * via a <script src="chrome.runtime.getURL('page.js')"> tag.
+ *
+ * Patches every signing entry point we know about, BEFORE the dApp's
+ * wallet adapter has bound any references.
  *
  * Signing flow when patched:
  *
@@ -13,7 +16,7 @@
  *           ↓
  *           await analysis result
  *           ↓
- *           show modal (Phase 17), await user click
+ *           show modal (Shadow DOM), await user click
  *           ↓
  *           if approve → call original signTransaction → return signature
  *           if reject → throw → dApp sees standard wallet rejection
@@ -21,17 +24,70 @@
  * No chrome.* APIs available here. All cross-context comms via window.
  */
 
-import {
-  isExtensionMessage,
-  MSG_NAMESPACE,
-  newId,
-  type AnalyzeRequest,
-  type AnalyzeResponse,
-  type TxRiskResultLike,
-} from "./types";
-import { showVerdictModal } from "./modal";
+// ============================================================================
+// Shared message envelope (inlined — keep in sync with src/types.ts)
+// ============================================================================
 
-type AnyTx = unknown; // VersionedTransaction | Transaction; we duck-type
+const MSG_NAMESPACE = "TXG";
+
+interface AnalyzeRequest {
+  type: "ANALYZE_REQUEST";
+  ns: typeof MSG_NAMESPACE;
+  id: string;
+  base64: string;
+  origin: string;
+}
+
+interface AnalyzeResponse {
+  type: "ANALYZE_RESPONSE";
+  ns: typeof MSG_NAMESPACE;
+  id: string;
+  ok: boolean;
+  result?: TxRiskResultLike;
+  error?: string;
+}
+
+interface TxRiskResultLike {
+  riskLevel: "safe" | "caution" | "danger";
+  score: number;
+  flags: Array<{
+    id: string;
+    severity: "low" | "medium" | "high";
+    label: string;
+    description: string;
+    evidence?: Record<string, unknown>;
+  }>;
+  recommendation: "Safe to sign" | "Proceed with caution" | "Do not sign";
+  explanation: string;
+  whatThisDoes: string[];
+  decodedInstructions: Array<{
+    index: number;
+    programId: string;
+    programName: string;
+    summary: string;
+  }>;
+  mode: "fast" | "full";
+}
+
+function newId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isExtensionMessage(
+  data: unknown,
+): data is AnalyzeRequest | AnalyzeResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    (data as { ns?: unknown }).ns === MSG_NAMESPACE
+  );
+}
+
+// ============================================================================
+// Wallet provider patches
+// ============================================================================
+
+type AnyTx = unknown;
 
 interface PhantomProvider {
   signTransaction?: (tx: AnyTx) => Promise<unknown>;
@@ -40,26 +96,18 @@ interface PhantomProvider {
     tx: AnyTx,
     opts?: unknown,
   ) => Promise<{ signature: string }>;
-  /** Marker so we don't double-patch on hot-reload or repeat injections. */
   __txgPatched?: boolean;
 }
 
 declare global {
   interface Window {
     phantom?: { solana?: PhantomProvider };
-    solana?: PhantomProvider; // legacy alias
+    solana?: PhantomProvider;
   }
 }
 
 console.debug("[TxGuardian] page-context injection active");
 
-// --- Patch installation ------------------------------------------------------
-
-/**
- * Wait for a wallet provider to appear, then patch it. Phantom is usually
- * available immediately at document_start, but other wallets / late-loading
- * scripts may set it later. Polls every 100ms for up to 10s, then gives up.
- */
 function whenAvailable<T>(
   getter: () => T | undefined,
   cb: (value: T) => void,
@@ -78,6 +126,12 @@ function whenAvailable<T>(
   tick();
 }
 
+function rejectionError(): Error {
+  const err = new Error("User rejected the request via TxGuardian.");
+  (err as Error & { code?: number }).code = 4001;
+  return err;
+}
+
 function patchProvider(provider: PhantomProvider, label: string): void {
   if (provider.__txgPatched) return;
   provider.__txgPatched = true;
@@ -88,9 +142,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
     provider.signTransaction = async (tx: AnyTx) => {
       console.debug("[TxGuardian] intercepted signTransaction");
       const decision = await analyzeAndAwait([tx]);
-      if (decision === "reject") {
-        throw rejectionError();
-      }
+      if (decision === "reject") throw rejectionError();
       return orig(tx);
     };
   }
@@ -100,9 +152,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
     provider.signAllTransactions = async (txs: AnyTx[]) => {
       console.debug("[TxGuardian] intercepted signAllTransactions");
       const decision = await analyzeAndAwait(txs);
-      if (decision === "reject") {
-        throw rejectionError();
-      }
+      if (decision === "reject") throw rejectionError();
       return orig(txs);
     };
   }
@@ -112,24 +162,12 @@ function patchProvider(provider: PhantomProvider, label: string): void {
     provider.signAndSendTransaction = async (tx: AnyTx, opts?: unknown) => {
       console.debug("[TxGuardian] intercepted signAndSendTransaction");
       const decision = await analyzeAndAwait([tx]);
-      if (decision === "reject") {
-        throw rejectionError();
-      }
+      if (decision === "reject") throw rejectionError();
       return orig(tx, opts);
     };
   }
 }
 
-function rejectionError(): Error {
-  // Mirrors the shape of Phantom's own rejection so dApps' error handling
-  // treats this the same as the user clicking Cancel in Phantom's prompt.
-  const err = new Error("User rejected the request via TxGuardian.");
-  // Phantom uses code 4001 for user-rejected (EIP-1193 convention).
-  (err as Error & { code?: number }).code = 4001;
-  return err;
-}
-
-// Direct providers: window.phantom.solana and the legacy window.solana alias.
 whenAvailable(
   () => window.phantom?.solana,
   (provider) => patchProvider(provider, "window.phantom.solana"),
@@ -139,17 +177,10 @@ whenAvailable(
   (provider) => patchProvider(provider, "window.solana"),
 );
 
-// --- Wallet Standard registration interception ------------------------------
+// ============================================================================
+// Wallet Standard registration interception
+// ============================================================================
 
-/**
- * Wallets that follow the Wallet Standard register themselves by dispatching
- * a `wallet-standard:register-wallet` event with a callback. We intercept
- * the registered wallet and wrap its `solana:signTransaction` feature.
- *
- * This catches dApps using @solana/wallet-adapter-react which discovers
- * wallets via this protocol, even when they DON'T directly touch
- * window.phantom.solana.
- */
 interface WalletStandardWallet {
   features?: Record<string, unknown> & {
     "solana:signTransaction"?: {
@@ -174,8 +205,6 @@ function patchWalletStandard(wallet: WalletStandardWallet): void {
   if (signFeature?.signTransaction) {
     const orig = signFeature.signTransaction.bind(signFeature);
     signFeature.signTransaction = async (...args: unknown[]) => {
-      // Wallet Standard's signTransaction takes an array of input objects;
-      // each input has { transaction: Uint8Array }.
       const inputs = args[0] as Array<{ transaction?: Uint8Array }>;
       const txs = (inputs ?? [])
         .map((i) => i.transaction)
@@ -201,24 +230,15 @@ function patchWalletStandard(wallet: WalletStandardWallet): void {
   }
 }
 
-// Per the @wallet-standard/app protocol:
-//   - Wallets dispatch 'wallet-standard:register-wallet' with their own
-//     callback as `detail`. We invoke that callback with our register API
-//     so they hand us the wallet object.
-//   - We dispatch 'wallet-standard:app-ready' with our register API as
-//     `detail`. Wallets that loaded BEFORE we attached our listener catch
-//     this and call the API to (re-)register.
-
 const walletStandardApi = {
   register(wallet: WalletStandardWallet): () => void {
     patchWalletStandard(wallet);
     return () => {
-      // No-op unregister — we never tear down patches.
+      // No-op unregister.
     };
   },
 };
 
-// 1. Listen for future registrations.
 window.addEventListener(
   "wallet-standard:register-wallet",
   (event) => {
@@ -233,8 +253,6 @@ window.addEventListener(
   false,
 );
 
-// 2. Trigger an "app-ready" event so wallets registered before our listener
-//    re-announce themselves to us. MUST include the api as detail per spec.
 window.dispatchEvent(
   new CustomEvent("wallet-standard:app-ready", {
     detail: walletStandardApi,
@@ -242,18 +260,18 @@ window.dispatchEvent(
 );
 console.debug("[TxGuardian] dispatched wallet-standard:app-ready");
 
-// --- Analyze + show modal pipeline ------------------------------------------
+// ============================================================================
+// Analyze + show modal pipeline
+// ============================================================================
 
-/**
- * For each tx, request analysis via postMessage (relayed by content.ts) then
- * show the modal and await the user's decision. If ANY tx in a batch rejects
- * (or fails to analyze), we treat the whole batch as rejected — same UX
- * Phantom uses for batch sign rejections.
- */
-async function analyzeAndAwait(
-  txs: AnyTx[],
-): Promise<"approve" | "reject"> {
-  if (txs.length === 0) return "approve"; // nothing to analyze, nothing to block
+type Decision = "approve" | "reject";
+
+type ModalInput =
+  | { kind: "verdict"; origin: string; verdict: TxRiskResultLike }
+  | { kind: "unavailable"; origin: string };
+
+async function analyzeAndAwait(txs: AnyTx[]): Promise<Decision> {
+  if (txs.length === 0) return "approve";
 
   for (const tx of txs) {
     const base64 = await serializeAny(tx);
@@ -263,8 +281,6 @@ async function analyzeAndAwait(
     }
     const verdict = await requestAnalysis(base64);
     if (!verdict) {
-      // Analysis failed (network, no response, etc.). Show a degraded modal
-      // that lets the user proceed at their own risk.
       const decision = await showVerdictModal({
         kind: "unavailable",
         origin: window.location.host,
@@ -282,23 +298,17 @@ async function analyzeAndAwait(
   return "approve";
 }
 
-/**
- * Serialize anything that quacks like a transaction into base64.
- */
 async function serializeAny(tx: AnyTx): Promise<string | null> {
   try {
-    if (tx instanceof Uint8Array) {
-      return uint8ToB64(tx);
-    }
+    if (tx instanceof Uint8Array) return uint8ToB64(tx);
     const candidate = tx as {
-      serialize?: (opts?: unknown) => Uint8Array | Buffer;
+      serialize?: (opts?: unknown) => Uint8Array | ArrayBufferLike;
     };
     if (typeof candidate.serialize !== "function") return null;
     let bytes: Uint8Array;
     try {
       bytes = candidate.serialize() as Uint8Array;
     } catch {
-      // Legacy Transaction needs explicit options to serialize unsigned.
       bytes = candidate.serialize({
         requireAllSignatures: false,
         verifySignatures: false,
@@ -314,16 +324,13 @@ async function serializeAny(tx: AnyTx): Promise<string | null> {
 
 function uint8ToB64(bytes: Uint8Array): string {
   let s = "";
-  // Avoid spread on large arrays; loop is safer.
   for (let i = 0; i < bytes.length; i++) {
     s += String.fromCharCode(bytes[i]!);
   }
   return btoa(s);
 }
 
-function requestAnalysis(
-  base64: string,
-): Promise<TxRiskResultLike | null> {
+function requestAnalysis(base64: string): Promise<TxRiskResultLike | null> {
   return new Promise((resolve) => {
     const id = newId();
     const timeout = setTimeout(() => {
@@ -350,3 +357,392 @@ function requestAnalysis(
     window.postMessage(req, window.location.origin);
   });
 }
+
+// ============================================================================
+// In-page modal (Shadow DOM, vanilla, no React)
+// ============================================================================
+
+const MODAL_HOST_ID = "txguardian-modal-host";
+
+function showVerdictModal(input: ModalInput): Promise<Decision> {
+  return new Promise((resolve) => {
+    document.getElementById(MODAL_HOST_ID)?.remove();
+
+    const host = document.createElement("div");
+    host.id = MODAL_HOST_ID;
+    host.style.cssText =
+      "all: initial; position: fixed; inset: 0; z-index: 2147483647;";
+    document.documentElement.appendChild(host);
+
+    const shadow = host.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = MODAL_CSS;
+    shadow.appendChild(style);
+
+    const root = document.createElement("div");
+    root.className = "scrim";
+    root.innerHTML =
+      input.kind === "verdict"
+        ? renderVerdict(input.origin, input.verdict)
+        : renderUnavailable(input.origin);
+    shadow.appendChild(root);
+
+    function close(decision: Decision): void {
+      host.remove();
+      resolve(decision);
+    }
+
+    shadow
+      .querySelector<HTMLButtonElement>("[data-action='approve']")
+      ?.addEventListener("click", () => close("approve"));
+    shadow
+      .querySelector<HTMLButtonElement>("[data-action='reject']")
+      ?.addEventListener("click", () => close("reject"));
+    shadow
+      .querySelector<HTMLButtonElement>("[data-action='close']")
+      ?.addEventListener("click", () => close("reject"));
+
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === "Escape") {
+        document.removeEventListener("keydown", onKey);
+        close("reject");
+      }
+    }
+    document.addEventListener("keydown", onKey);
+  });
+}
+
+function escapeHTML(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function severityClass(s: "low" | "medium" | "high"): string {
+  return `sev sev-${s}`;
+}
+
+function levelClass(l: "safe" | "caution" | "danger"): string {
+  return `level level-${l}`;
+}
+
+function levelLabel(l: "safe" | "caution" | "danger"): string {
+  return l === "safe" ? "Safe" : l === "caution" ? "Caution" : "Danger";
+}
+
+function renderVerdict(origin: string, v: TxRiskResultLike): string {
+  const flagsHTML =
+    v.flags.length === 0
+      ? `<div class="empty">No flags raised.</div>`
+      : v.flags
+          .map(
+            (f) => `
+          <article class="flag">
+            <div class="flag-head">
+              <span class="${escapeHTML(severityClass(f.severity))}">${escapeHTML(f.severity)}</span>
+              <strong>${escapeHTML(f.label)}</strong>
+            </div>
+            <p>${escapeHTML(f.description)}</p>
+          </article>`,
+          )
+          .join("");
+
+  const whatHTML =
+    v.whatThisDoes.length === 0
+      ? ""
+      : `<section class="block">
+        <div class="block-label">What this transaction does</div>
+        <ul class="bullets">
+          ${v.whatThisDoes.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}
+        </ul>
+      </section>`;
+
+  const explanationHTML = v.explanation
+    ? `<section class="block"><p class="explanation">${escapeHTML(v.explanation)}</p></section>`
+    : "";
+
+  const isDanger = v.riskLevel === "danger";
+  const approveLabel = isDanger ? "Sign anyway" : "Approve & sign";
+  const rejectLabel = isDanger ? "Reject" : "Cancel";
+  const approveClass = isDanger ? "btn ghost" : "btn primary";
+  const rejectClass = isDanger ? "btn primary" : "btn secondary";
+
+  return `
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="txg-title">
+      <header>
+        <div class="brand">
+          <span class="dot"></span>
+          <span>TxGuardian</span>
+          <span class="origin">on ${escapeHTML(origin)}</span>
+        </div>
+        <button class="close" data-action="close" aria-label="Close">×</button>
+      </header>
+
+      <div class="verdict ${escapeHTML(levelClass(v.riskLevel))}">
+        <div class="verdict-label">${escapeHTML(levelLabel(v.riskLevel))}</div>
+        <div class="verdict-meta">
+          <span>${v.score} / 100</span>
+          <span class="dotsep">·</span>
+          <span>${v.flags.length} flag${v.flags.length === 1 ? "" : "s"}</span>
+          <span class="dotsep">·</span>
+          <span>${escapeHTML(v.recommendation)}</span>
+        </div>
+      </div>
+
+      <div class="body">
+        ${explanationHTML}
+        ${whatHTML}
+        ${
+          v.flags.length > 0
+            ? `<section class="block">
+                <div class="block-label">Flags</div>
+                <div class="flags">${flagsHTML}</div>
+              </section>`
+            : ""
+        }
+      </div>
+
+      <footer>
+        <button class="${rejectClass}" data-action="reject">${rejectLabel}</button>
+        <button class="${approveClass}" data-action="approve">${approveLabel}</button>
+      </footer>
+    </div>
+  `;
+}
+
+function renderUnavailable(origin: string): string {
+  return `
+    <div class="card" role="dialog" aria-modal="true">
+      <header>
+        <div class="brand">
+          <span class="dot"></span>
+          <span>TxGuardian</span>
+          <span class="origin">on ${escapeHTML(origin)}</span>
+        </div>
+        <button class="close" data-action="close" aria-label="Close">×</button>
+      </header>
+      <div class="body">
+        <div class="block-label">Analyzer unavailable</div>
+        <p class="explanation">
+          TxGuardian could not reach the analyzer service. The wallet's own
+          confirmation will still appear next. Proceed only if you trust this
+          dApp.
+        </p>
+      </div>
+      <footer>
+        <button class="btn primary" data-action="reject">Reject</button>
+        <button class="btn ghost" data-action="approve">Continue anyway</button>
+      </footer>
+    </div>
+  `;
+}
+
+const MODAL_CSS = `
+:host { all: initial; }
+* { box-sizing: border-box; }
+
+.scrim {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 19, 0.78);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fade 120ms ease-out;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: #171c1f;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  color: #eef2f3;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.brand .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #3e8f96;
+}
+.brand .origin {
+  font-weight: 400;
+  color: #7f8a90;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.close {
+  background: transparent;
+  border: 0;
+  color: #a7b0b5;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.close:hover { color: #eef2f3; background: rgba(255, 255, 255, 0.06); }
+
+.verdict {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.verdict-label {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.verdict-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: #a7b0b5;
+}
+.verdict-meta .dotsep { color: #7f8a90; }
+
+.level-safe    .verdict-label { color: #4d8f66; }
+.level-safe                   { background: rgba(77, 143, 102, 0.10); }
+.level-caution .verdict-label { color: #d0a34b; }
+.level-caution                { background: rgba(208, 163, 75, 0.10); }
+.level-danger  .verdict-label { color: #c35b63; }
+.level-danger                 { background: rgba(195, 91, 99, 0.10); }
+
+.body { padding: 16px 20px; }
+
+.block + .block { margin-top: 18px; }
+.block-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #7f8a90;
+  margin-bottom: 8px;
+}
+
+.explanation {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #eef2f3;
+}
+
+.bullets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #a7b0b5;
+}
+.bullets li {
+  padding-left: 14px;
+  position: relative;
+}
+.bullets li::before {
+  content: "·";
+  position: absolute;
+  left: 4px;
+  color: #7f8a90;
+}
+
+.flags { display: flex; flex-direction: column; gap: 8px; }
+.flag {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1d2327;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.flag-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.flag p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #a7b0b5;
+}
+
+.sev {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.sev-low    { background: rgba(90, 143, 203, 0.15); color: #5a8fcb; }
+.sev-medium { background: rgba(208, 163, 75, 0.16); color: #d0a34b; }
+.sev-high   { background: rgba(195, 91, 99, 0.16); color: #c35b63; }
+
+.empty {
+  font-size: 13px;
+  color: #7f8a90;
+  font-style: italic;
+}
+
+footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+.btn.primary { background: #3e8f96; color: #0a1416; font-weight: 600; }
+.btn.primary:hover { background: #4fa3aa; }
+.btn.secondary { background: #1d2327; color: #eef2f3; border-color: rgba(255, 255, 255, 0.08); }
+.btn.secondary:hover { background: #232a2f; }
+.btn.ghost { background: transparent; color: #a7b0b5; }
+.btn.ghost:hover { background: #1d2327; color: #eef2f3; }
+
+button:focus-visible {
+  outline: 2px solid #3e8f96;
+  outline-offset: 2px;
+}
+`;

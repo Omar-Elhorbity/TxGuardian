@@ -2,17 +2,25 @@ import { defineManifest } from "@crxjs/vite-plugin";
 import pkg from "./package.json";
 
 /**
- * MV3 manifest for the TxGuardian extension.
+ * MV3 manifest.
  *
- * Two content scripts:
- *   - src/page.ts (world: "MAIN"): patches window.phantom.solana and the
- *     Wallet Standard registration event in the page's own JS context.
- *     Cannot use chrome.* APIs.
- *   - src/content.ts (world: "ISOLATED"): bridges page <-> service worker
- *     via window.postMessage and chrome.runtime.sendMessage.
+ * Architecture:
+ *   - src/content.ts (ISOLATED world content_script): bridges page <->
+ *     service worker AND injects src/page.ts via a <script> tag with
+ *     chrome.runtime.getURL(). Chrome runs the resulting script in
+ *     MAIN world automatically (because it's appended to the page DOM
+ *     as a regular script element).
  *
- * host_permissions covers the analyze endpoint (default: localhost:3000).
- * Update the URL when you deploy and rebuild.
+ *   - src/page.ts: NOT a content_script. It's a web-accessible asset
+ *     that runs in MAIN world via the script tag injected by content.ts.
+ *     Self-contained — no value imports — so it builds to a single file
+ *     with no chunk splitting.
+ *
+ *   - src/background.ts: service worker, calls /api/analyze.
+ *
+ * This avoids the @crxjs/vite-plugin world: "MAIN" content_script bug
+ * where the auto-generated loader's dynamic import resolves against the
+ * dApp's URL (not the extension's), 404s, and silently fails.
  */
 export default defineManifest({
   manifest_version: 3,
@@ -34,17 +42,15 @@ export default defineManifest({
   content_scripts: [
     {
       matches: ["<all_urls>"],
-      js: ["src/page.ts"],
-      run_at: "document_start",
-      world: "MAIN",
-      all_frames: true,
-    },
-    {
-      matches: ["<all_urls>"],
       js: ["src/content.ts"],
       run_at: "document_start",
-      world: "ISOLATED",
       all_frames: true,
+    },
+  ],
+  web_accessible_resources: [
+    {
+      resources: ["page.js"],
+      matches: ["<all_urls>"],
     },
   ],
   action: {

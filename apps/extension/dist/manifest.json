@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "TxGuardian",
+  "version": "0.1.0",
+  "description": "Pre-sign safety verdict for Solana transactions. Inspects what your wallet is about to sign.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://*.vercel.app/*",
+    "https://api.devnet.solana.com/*",
+    "https://api.mainnet-beta.solana.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/content.ts-loader-CFNPSarj.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "page.js",
+        "page.js.map",
+        "assets/chunk-D-iX3o5S.js",
+        "assets/chunk-D-iX3o5S.js.map",
+        "assets/chunk-CSy4BWKo.js",
+        "assets/chunk-CSy4BWKo.js.map"
+      ],
+      "use_dynamic_url": false
+    }
+  ],
+  "action": {
+    "default_title": "TxGuardian"
+  }
+}
