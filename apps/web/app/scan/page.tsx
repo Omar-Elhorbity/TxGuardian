@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import type { TxRiskResult } from "@txguardian/sdk";
 import { TxInput } from "@/components/TxInput";
@@ -8,7 +8,6 @@ import { SampleTxPicker } from "@/components/SampleTxPicker";
 import { RiskSkeleton } from "@/components/RiskSkeleton";
 import { ResultView } from "@/components/ResultView";
 import { RecommendationBar } from "@/components/RecommendationBar";
-import { GetTxHelp } from "@/components/GetTxHelp";
 import { AlertCircle } from "lucide-react";
 import { signAndSend, checkSignability } from "@/lib/sign-and-send";
 
@@ -76,30 +75,6 @@ export default function ScanPage() {
   const onAnalyze = useCallback(() => {
     void submit(tx, mode);
   }, [tx, mode, submit]);
-
-  // Bookmarklet handoff: when the page is opened with ?tx=<base64>,
-  // populate the textarea and auto-analyze. Only fires once on mount; we
-  // also strip the param from the URL afterwards so a manual refresh
-  // doesn't re-fire (and so the base64 doesn't sit in the address bar).
-  const autoRanRef = useRef(false);
-  useEffect(() => {
-    if (autoRanRef.current) return;
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const txParam = params.get("tx");
-    if (!txParam) return;
-    autoRanRef.current = true;
-    setTx(txParam);
-    void submit(txParam, mode);
-    // Clean the URL so a refresh doesn't re-analyze and the base64 isn't
-    // visible in the address bar.
-    const url = new URL(window.location.href);
-    url.searchParams.delete("tx");
-    window.history.replaceState(null, "", url.toString());
-    // Intentionally only run once on mount; subsequent mode/tx changes go
-    // through the normal user flow.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const onPickSample = useCallback(
     async (type: "safe" | "caution" | "danger") => {
@@ -195,7 +170,6 @@ export default function ScanPage() {
           onPick={onPickSample}
           disabled={state.kind === "loading"}
         />
-        <GetTxHelp />
       </div>
 
       <section className="mt-10" aria-live="polite">
