@@ -5,6 +5,7 @@ import { simulateSafely } from "./simulate";
 import { runRules } from "./rules/index";
 import { scoreFlags } from "./scorer";
 import { explainCached } from "./explain";
+import { fetchConfirmedAttestations, type OnChainAttestation } from "./registry";
 
 /**
  * Public SDK entry point. Analyzes a Solana transaction and returns a
@@ -30,6 +31,7 @@ export async function analyze(
   const { decoded, tokenOps } = decodeAll(parsed.instructions);
 
   let simulation;
+  let onChainAttestations: OnChainAttestation[] = [];
   if (mode === "full") {
     try {
       const vtx = toVersionedTransaction(options.transaction);
@@ -37,6 +39,16 @@ export async function analyze(
     } catch {
       // Simulation is best-effort; never block the verdict on it.
       simulation = undefined;
+    }
+    // Same isolation pattern: an RPC failure on the registry feed never
+    // blocks the verdict. The drainer rule treats [] as "no on-chain data,
+    // hardcoded list still applies."
+    try {
+      onChainAttestations = await fetchConfirmedAttestations(
+        options.connection,
+      );
+    } catch {
+      onChainAttestations = [];
     }
   }
 
@@ -46,6 +58,7 @@ export async function analyze(
     tokenOps,
     ...(simulation !== undefined ? { simulation } : {}),
     ...(options.publicKey ? { signer: options.publicKey.toBase58() } : {}),
+    onChainAttestations,
   });
 
   const { score, riskLevel, recommendation } = scoreFlags(flags);
@@ -112,3 +125,18 @@ export {
   SPL_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
 } from "./constants";
+
+// On-chain registry — types + helpers for reading the live devnet feed.
+export type {
+  OnChainAttestation,
+  AttestationStatus,
+  AttestationSeverity,
+} from "./registry";
+export {
+  TXGUARDIAN_REGISTRY_PROGRAM_ID,
+  fetchConfirmedAttestations,
+  fetchAllAttestations,
+  invalidateAttestationCaches,
+  deriveAttestationPda,
+  deriveRegistryPda,
+} from "./registry";

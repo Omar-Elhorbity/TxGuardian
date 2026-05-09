@@ -1,17 +1,17 @@
 [toolchain]
-anchor_version = "0.30.1"
+anchor_version = "0.32.1"
 
 [features]
 resolution = true
 skip-lint = false
 
-# Placeholder program id — replaced by `anchor keys sync` after the first
-# `anchor build` (see README "On-chain registry" section).
+# Live devnet deployment.
+# Explorer: https://explorer.solana.com/address/Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7?cluster=devnet
 [programs.localnet]
-txguardian_registry = "Fg6PaFpoGXkYsidMpWxqSkLb3vrouhTRTFVJxJ7nJjN8"
+txguardian_registry = "Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7"
 
 [programs.devnet]
-txguardian_registry = "Fg6PaFpoGXkYsidMpWxqSkLb3vrouhTRTFVJxJ7nJjN8"
+txguardian_registry = "Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7"
 
 [registry]
 url = "https://api.apr.dev"

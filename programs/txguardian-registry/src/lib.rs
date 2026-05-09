@@ -19,9 +19,9 @@ pub mod state;
 
 use instructions::*;
 
-// Placeholder program id — `anchor keys sync` rewrites this and Anchor.toml
-// after the first `anchor build` to match the auto-generated keypair.
-declare_id!("Fg6PaFpoGXkYsidMpWxqSkLb3vrouhTRTFVJxJ7nJjN8");
+// Live devnet program id (set by `anchor keys sync` on first build).
+// Explorer: https://explorer.solana.com/address/Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7?cluster=devnet
+declare_id!("Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7");
 
 #[program]
 pub mod txguardian_registry {

@@ -5,6 +5,7 @@ import type {
   TxRiskFlag,
 } from "../types";
 import type { DecodedTokenOp } from "../decode";
+import type { OnChainAttestation } from "../registry";
 import { detectKnownDrainer } from "./drainer";
 import { detectUnknownPrograms } from "./unknown";
 import { detectComplexity } from "./complexity";
@@ -19,6 +20,12 @@ export interface RuleContext {
   simulation?: SimulationDelta;
   /** Optional signer pubkey (base58) for context-aware checks. */
   signer?: string;
+  /**
+   * Confirmed on-chain attestations from the TxGuardian registry program,
+   * fetched best-effort in full mode. Empty array (not undefined) means
+   * "fetched and got nothing or fetch failed." Rules treat both the same way.
+   */
+  onChainAttestations?: OnChainAttestation[];
 }
 
 export type Rule = (ctx: RuleContext) => TxRiskFlag | TxRiskFlag[] | null;
