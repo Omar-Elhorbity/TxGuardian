@@ -235,3 +235,48 @@ export function deriveRegistryPda(
     new PublicKey(programId),
   );
 }
+
+// --- Registry singleton (admin + counters) ----------------------------------
+
+const REGISTRY_DISCRIMINATOR: Buffer = createHash("sha256")
+  .update("account:Registry")
+  .digest()
+  .subarray(0, 8);
+
+/**
+ * On-chain layout: discriminator(8) | admin(32) | submission_count(8) |
+ * confirmed_count(8) | bump(1) = 57 bytes.
+ */
+const REGISTRY_SIZE = 8 + 32 + 8 + 8 + 1; // 57
+
+export interface RegistrySummary {
+  /** Curator pubkey (base58). */
+  admin: string;
+  /** Total submissions ever received (monotonic). */
+  submissionCount: number;
+  /** Currently confirmed (non-revoked) attestations. */
+  confirmedCount: number;
+}
+
+/**
+ * Read the singleton Registry account. Returns null if not yet initialized,
+ * or if RPC fails. Callers should treat null as "show the empty state."
+ */
+export async function fetchRegistry(
+  connection: Connection,
+  programId: string = TXGUARDIAN_REGISTRY_PROGRAM_ID,
+): Promise<RegistrySummary | null> {
+  try {
+    const [pda] = deriveRegistryPda(programId);
+    const info = await connection.getAccountInfo(pda);
+    if (!info || info.data.length !== REGISTRY_SIZE) return null;
+    const buf = Buffer.from(info.data);
+    if (!buf.subarray(0, 8).equals(REGISTRY_DISCRIMINATOR)) return null;
+    const admin = new PublicKey(buf.subarray(8, 40)).toBase58();
+    const submissionCount = Number(buf.readBigUInt64LE(40));
+    const confirmedCount = Number(buf.readBigUInt64LE(48));
+    return { admin, submissionCount, confirmedCount };
+  } catch {
+    return null;
+  }
+}

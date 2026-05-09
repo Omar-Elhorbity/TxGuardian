@@ -132,10 +132,12 @@ export type {
   AttestationStatus,
   AttestationSeverity,
 } from "./registry";
+export type { RegistrySummary } from "./registry";
 export {
   TXGUARDIAN_REGISTRY_PROGRAM_ID,
   fetchConfirmedAttestations,
   fetchAllAttestations,
+  fetchRegistry,
   invalidateAttestationCaches,
   deriveAttestationPda,
   deriveRegistryPda,

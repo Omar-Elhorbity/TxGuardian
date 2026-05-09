@@ -142,6 +142,8 @@ The Monitoring App is a Next.js App Router project deployed on Vercel. It has tw
     │
     ├── /result/:id         ← Risk result detail page (shareable link)
     │
+    ├── /registry           ← Live on-chain attestation feed (Anchor program, devnet)
+    │
     ├── /docs               ← SDK documentation (quickstart, API reference)
     │       ├── /docs/quickstart
     │       ├── /docs/api-reference

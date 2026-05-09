@@ -11,13 +11,14 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "anchor:build": "anchor build",
-    "anchor:test": "anchor test"
+    "anchor:test": "anchor test",
+    "seed-registry": "tsx scripts/seed-registry.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "@coral-xyz/anchor": "^0.30.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@types/bn.js": "^5.1.5",
     "@types/chai": "^4.3.16",
     "@types/mocha": "^10.0.7",
@@ -26,6 +27,7 @@
     "chai": "^4.3.10",
     "mocha": "^10.7.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }
 }

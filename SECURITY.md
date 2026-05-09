@@ -53,11 +53,19 @@ Every stage validates before interpreting:
 
 These never appear in client bundles. If you import any of these from a client component, the build will fail or the secret will leak — verify before deploying.
 
-### 6. Drainer blocklist
+### 6. Drainer blocklist — two-tier feed
 
-`KNOWN_DRAINERS` is intentionally short. Every entry must include a verifiable public source citation. An empty list is better than an unsourced one — false positives on the drainer flag would erode user trust in the most-severe verdict.
+The drainer flag has two data sources:
 
-For production use, plug in a continuously updated feed (Solana Foundation security disclosures, ScamSniffer, Blowfish public reports). Don't ship hardcoded entries that nobody can audit.
+**Hardcoded (`constants.ts` `KNOWN_DRAINERS`)** — intentionally short. Every entry must include a verifiable public source citation. An empty list is better than an unsourced one — false positives on the drainer flag would erode user trust in the most-severe verdict.
+
+**On-chain (`txguardian_registry` Anchor program, devnet)** — anyone can submit a flag; an admin keypair (multisig in v1) confirms or revokes; the SDK reads confirmed entries via `getProgramAccounts` with a memcmp filter at the `status` byte offset. The drainer rule consults both sources and tags `evidence.source` with `"hardcoded"` or `"onchain"`.
+
+Threats specific to the on-chain feed:
+- **Spam submissions** — anyone can pay the rent for a pending attestation. Mitigation: pending entries are NEVER read by the SDK. Only `confirmed` status (set by admin) flows into rule output.
+- **Admin compromise** — current MVP uses a single admin keypair. If compromised, an attacker could attest false-positives or revoke real drainers. Mitigation in v1: multisig, with rotation via the existing `update_admin` instruction.
+- **Untrusted reason text** — submitters can put any 64-byte string in the `reason` field. The reason is **never** quoted into LLM prompts (it's not in flag descriptions, only in evidence). The `/registry` UI labels it as user-controlled. Do not act on a reason field as authoritative.
+- **RPC tampering** — a malicious RPC could lie about which attestations exist. Mitigation: clients should pin to a trusted RPC provider (Helius, QuickNode) and document the program ID; future v1 versions could add Merkle-proof verification.
 
 ### 7. Demo fixtures are safe
 
