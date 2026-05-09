@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@txguardian/sdk": "workspace:*",
+    "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/web3.js": "^1.95.4",
