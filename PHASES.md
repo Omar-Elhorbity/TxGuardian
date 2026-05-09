@@ -166,3 +166,59 @@ A running journal of how TxGuardian was built. Each phase ends with a commit and
 - No animation/motion polish — DESIGN.md says "subtle, functional, quick"; deferring entrance animations to keep velocity
 
 **Next:** Phase 5 — `/api/analyze` route, `/scan` page, result components, demo fixtures.
+
+---
+
+## Phase 5 — Scan flow, API routes, result components, demo fixtures
+
+**Goal:** Make the SDK consumable end-to-end through the web scanner. From paste → POST → render verdict → recommendation bar.
+
+**Done:**
+
+**Server side:**
+- `apps/web/lib/rpc.ts` — module-cached `Connection` reading `RPC_URL` env (defaults to devnet). Server-only.
+- `apps/web/lib/json-safe.ts` — recursive BigInt/Uint8Array/Map/Set serializer for safe `NextResponse.json()`. Needed because evidence fields can contain BigInts.
+- `apps/web/lib/fixtures.ts` — three deterministic fixture builders using web3.js + `@solana/spl-token`:
+  - `buildSafeFixture()` — SOL transfer + ComputeBudget. Routine.
+  - `buildCautionFixture()` — 5 calls to an unknown program. Triggers UNKNOWN_PROGRAM + MULTI_INSTRUCTION_COMPLEXITY.
+  - `buildDangerFixture()` — `createApproveInstruction(amount=u64::MAX)` + unknown program + high priority fee. Triggers FULL_TOKEN_APPROVAL + UNKNOWN_PROGRAM + UNUSUAL_FEE.
+  - All use `Keypair.fromSeed(Uint8Array(32).fill(N))` so each click produces the exact same base64 — demo replays cleanly.
+  - Serialized with `requireAllSignatures: false, verifySignatures: false` since fixtures are never sent on-chain.
+- `apps/web/app/api/fixtures/route.ts` — `GET /api/fixtures?type=safe|caution|danger`. Cached for 1h.
+- `apps/web/app/api/analyze/route.ts` — `POST /api/analyze`:
+  - Body validation: `transaction` is a string, length 1–8192. Returns 400 with a clear message if not.
+  - Per-IP rate limit: 30 requests / 10s window. In-memory map per Vercel instance.
+  - `runtime: "nodejs"` (not edge — `@solana/web3.js` needs Node primitives).
+  - Catches `ParseError` → returns 400 with the parse message; any other error → 500 with a generic message (no internals leaked).
+  - Output passed through `jsonSafe()` to handle BigInts. `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`.
+
+**Components:**
+- `RiskBadge.tsx` — large verdict pill, semantic color, stable icon (ShieldCheck/AlertTriangle/ShieldX), full ARIA announcement ("Danger. Score 87 of 100. 3 flags detected.").
+- `FlagCard.tsx` — severity chip + label + description + collapsible evidence JSON. ARIA-labelledby + aria-expanded.
+- `ExplanationBox.tsx` — LLM prose section with "Plain-English summary" header + "What this transaction does" bullet list. Hidden if both empty.
+- `RecommendationBar.tsx` — sticky bottom-of-viewport bar showing the recommendation in the level's tone, plus a "Scan another" reset button. Honest about scope (no fake "Sign"/"Reject" buttons since the scanner doesn't sign).
+- `TxInput.tsx` — labeled textarea with helper text, monospace, mode toggle (Fast/Full) as `<fieldset>`. Submit button disabled when empty.
+- `RiskSkeleton.tsx` — animated step indicator with `aria-live="polite"`. Shows 3 steps in fast mode, 4 in full ("Generating explanation").
+- `SampleTxPicker.tsx` — three "Try a sample" cards (Safe/Caution/Danger) with the matching risk-state icon.
+- `ResultView.tsx` — composes the result: badge → explanation → flags → decoded instructions → raw JSON toggle. Order matches the design system hierarchy spec exactly (verdict → explanation → evidence → technical → raw).
+
+**Page:**
+- `app/scan/page.tsx` — client component with state machine (idle / loading / error / result). Picks a sample → fills textarea → auto-submits. Errors render inside an `aria-live="polite"` region with a clear recovery message.
+
+**Security posture:**
+- Body size capped at 8192 chars before any parsing.
+- Per-IP rate limit prevents trivial abuse.
+- Error messages are generic — internal stack traces never leak to clients.
+- `jsonSafe()` ensures no `JSON.stringify` crash on BigInts (defensive against malformed evidence).
+- API runtime explicitly `nodejs`, not edge — needed for `@solana/web3.js` and explicit about the Node-only path.
+- The result view's "Raw analysis JSON" toggle exposes the full result for debugging — fine in dev/demo, but a production version would gate this on a feature flag.
+
+**Demo flow now end-to-end:**
+1. User opens `/scan`
+2. Clicks "Danger sample"
+3. `/api/fixtures?type=danger` returns base64
+4. Textarea fills + auto-submits to `/api/analyze` in Full mode
+5. Server: parse → decode → simulate (best-effort) → 5 rules → score → LLM translate → JSON-safe response
+6. Client: badge + explanation + flag cards + decoded instructions + sticky recommendation bar
+
+**Next:** Phase 6 — `/docs`, `/about`, `/playground` lightweight pages.
