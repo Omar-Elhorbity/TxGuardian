@@ -40,6 +40,9 @@ target/
 test-ledger/
 *.so
 
+# Extension build output
+apps/extension/dist/
+
 # Cargo
 **/Cargo.lock.bak
 
