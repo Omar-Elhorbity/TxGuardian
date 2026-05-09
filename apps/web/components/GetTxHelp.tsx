@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Copy, Check, ExternalLink } from "lucide-react";
 
 /**
@@ -27,6 +27,17 @@ export function GetTxHelp() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
+
+  // React 19 blocks `javascript:` URLs in `href` attributes at render time
+  // as an XSS guard. Our bookmarklet is a controlled string we generate
+  // ourselves (no user input), so we set the href via direct DOM after
+  // mount — bypasses React's filter without disabling it globally.
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (linkRef.current && bookmarklet) {
+      linkRef.current.setAttribute("href", bookmarklet);
+    }
+  }, [bookmarklet]);
 
   return (
     <div className="panel">
@@ -67,13 +78,19 @@ export function GetTxHelp() {
                 signing happens.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {/* Drag-to-bookmarks anchor */}
+                {/* Drag-to-bookmarks anchor — href set via ref after mount
+                    to bypass React 19's javascript: URL filter. */}
                 <a
-                  href={bookmarklet || "javascript:void(0)"}
-                  className="btn btn-secondary text-[12px]"
+                  ref={linkRef}
+                  className="btn btn-secondary text-[12px] cursor-grab active:cursor-grabbing"
                   onClick={(e) => {
-                    // Don't navigate if the user clicks instead of dragging
+                    // Don't try to navigate if the user clicks instead of
+                    // dragging — the click would fire a no-op since the
+                    // bookmarklet's IIFE expects to run in a dApp page.
                     e.preventDefault();
+                    alert(
+                      "Drag this button to your bookmarks bar — don't click it. Or use the 'Copy source' button and paste it as a bookmark URL.",
+                    );
                   }}
                   draggable
                 >
@@ -111,6 +128,29 @@ export function GetTxHelp() {
                   </code>
                 </span>
               </div>
+              <details className="mt-3 rounded-md border border-border bg-surface-2/60 p-3 text-[12px]">
+                <summary className="cursor-pointer text-text-secondary">
+                  Drag-to-bar not working? Add it manually.
+                </summary>
+                <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-text-secondary">
+                  <li>Right-click your bookmarks bar → <em>Add page…</em></li>
+                  <li>
+                    Name: <code className="font-mono text-[11px]">Scan on TxGuardian</code>
+                  </li>
+                  <li>
+                    URL: click <strong>Copy source</strong> above and paste
+                    here. The string starts with{" "}
+                    <code className="font-mono text-[11px]">javascript:</code>.
+                  </li>
+                  <li>Save. Use it on any dApp page with Phantom connected.</li>
+                </ol>
+                <p className="mt-2 text-[11px] text-text-muted">
+                  Some browsers (Brave, hardened Chrome profiles) strip the{" "}
+                  <code className="font-mono text-[11px]">javascript:</code>{" "}
+                  prefix when pasting into the URL field — re-type it after
+                  paste if so.
+                </p>
+              </details>
               <p className="mt-2 text-[11px] text-text-muted">
                 After reviewing, reload the dApp page to remove the
                 interceptor and sign normally.
