@@ -424,3 +424,28 @@ Total artifacts:
 - 1 toolchain installer (`scripts/setup-solana-toolchain.sh`)
 - 1 devcontainer config
 - 5 design / architecture / security / deploy docs
+
+---
+
+## Phase 13 — LLM provider swap: Anthropic → Google
+
+**Goal:** Drop in Google Gemini as the LLM translator. Vercel AI SDK abstracts the model layer so it's a localized swap.
+
+**Done:**
+- `packages/sdk/package.json` — `@ai-sdk/anthropic` replaced with `@ai-sdk/google`
+- `packages/sdk/src/explain.ts` — `import { google } from "@ai-sdk/google"`, `model: google(modelId)`, default model `gemini-2.5-flash`
+- `.env.example` — `ANTHROPIC_API_KEY` → `GOOGLE_GENERATIVE_AI_API_KEY` (the conventional name `@ai-sdk/google` reads automatically)
+- README, SECURITY, IA, docs page updated for the new env var + model name
+- No changes needed in `analyze()`, the Zod schema, the system prompt, the cache, or the failure-isolation path — all provider-agnostic by design
+
+**Re-run on the deploy machine:**
+```bash
+pnpm install                  # picks up @ai-sdk/google, drops @ai-sdk/anthropic
+# Add to apps/web/.env.local:
+#   GOOGLE_GENERATIVE_AI_API_KEY=<key from https://aistudio.google.com/apikey>
+pnpm dev
+```
+
+**Validation:** /scan in Full mode should still return a populated `explanation` + `whatThisDoes`. Verdict and flags are unchanged (deterministic engine independent of LLM). System prompt + Zod schema also unchanged — Gemini honors them the same as Claude.
+
+**No semantic changes.** The architectural invariants from Phase 3 still hold: the LLM is a translator, not a detector. Provider swap is a single-file change because everything around it was designed to be provider-agnostic.

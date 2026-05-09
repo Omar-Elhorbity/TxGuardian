@@ -45,11 +45,11 @@ Every stage validates before interpreting:
 
 ### 5. Server-only secrets
 
-`RPC_URL` and `ANTHROPIC_API_KEY` are read only in:
+`RPC_URL` and `GOOGLE_GENERATIVE_AI_API_KEY` are read only in:
 - `apps/web/lib/rpc.ts`
 - `apps/web/app/api/analyze/route.ts`
 - `apps/web/app/api/fixtures/route.ts`
-- `packages/sdk/src/explain.ts` (server-only — the file imports `@ai-sdk/anthropic`, do not import from client components)
+- `packages/sdk/src/explain.ts` (server-only — the file imports `@ai-sdk/google`, do not import from client components)
 
 These never appear in client bundles. If you import any of these from a client component, the build will fail or the secret will leak — verify before deploying.
 

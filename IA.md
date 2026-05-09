@@ -93,7 +93,7 @@ SDK Entry Point  (analyze())
 
             Implementation:
               - generateObject() from `ai`, with a Zod schema (.max() length-capped).
-              - Model: claude-haiku-4-5 (fast + cheap default). Sonnet 4.6 toggle in /playground.
+              - Model: gemini-2.5-flash (fast + cheap default). Larger Gemini variants via TXGUARDIAN_MODEL env.
               - temperature: 0.2 (drop to 0.1 if outputs drift).
               - System prompt forbids inventing flags or programs not in input.
               - Recommendation field is enum-locked, must mirror riskLevel.
@@ -124,7 +124,7 @@ packages/
     tsconfig.json
 ```
 
-`explain.ts` is server-only — it imports `@ai-sdk/anthropic` and reads `ANTHROPIC_API_KEY` from env. Never bundle into a client component.
+`explain.ts` is server-only — it imports `@ai-sdk/google` and reads `GOOGLE_GENERATIVE_AI_API_KEY` from env. Never bundle into a client component.
 
 ---
 
@@ -272,7 +272,7 @@ Next.js Frontend (/scan)
     ▼
 Next.js API Route (Vercel serverless function)
     │  - Reads RPC_URL (Helius or QuickNode dev key) from env
-    │  - Reads ANTHROPIC_API_KEY from env (full mode only)
+    │  - Reads GOOGLE_GENERATIVE_AI_API_KEY from env (full mode only)
     │  - Calls SDK: analyze(options)
     │      └── Parser → Rule Engine → Scorer → (AI Explainer if full mode)
     │                                              └── Vercel AI SDK

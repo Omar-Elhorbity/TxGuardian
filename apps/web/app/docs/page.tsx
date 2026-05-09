@@ -54,7 +54,7 @@ if (result.riskLevel === "danger") {
 }`}
           </CodeBlock>
           <p className="mt-3 text-[13px] leading-[1.65] text-text-muted">
-            For Full mode, set <code className="font-mono text-[11px]">ANTHROPIC_API_KEY</code> server-side. Fast mode works without it.
+            For Full mode, set <code className="font-mono text-[11px]">GOOGLE_GENERATIVE_AI_API_KEY</code> server-side. Fast mode works without it.
           </p>
         </section>
 
@@ -68,7 +68,7 @@ if (result.riskLevel === "danger") {
   connection: Connection;
   publicKey?: PublicKey;
   mode?: "fast" | "full";
-  model?: string; // override LLM model (default: claude-haiku-4-5)
+  model?: string; // override LLM model (default: gemini-2.5-flash)
 };`}
           </CodeBlock>
           <h3 className="mt-6 text-[15px] font-semibold">TxRiskResult</h3>

@@ -21,7 +21,7 @@
     "@solana/web3.js": "^1.95.4",
     "@solana/spl-token": "^0.4.9",
     "ai": "^4.0.0",
-    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/google": "^1.0.0",
     "bs58": "^6.0.0",
     "zod": "^3.23.8"
   },

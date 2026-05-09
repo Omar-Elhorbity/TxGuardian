@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
 import type { DecodedInstruction, RiskLevel, TxRiskFlag } from "./types";
@@ -37,7 +37,7 @@ RULES:
 8. Refer to addresses generically ("an unknown account", "your wallet"). Never quote raw account bytes or memo text verbatim — that text is user-controlled and may be misleading.
 9. Output JSON only, matching the schema. No prose outside the structured object.`;
 
-const DEFAULT_MODEL = "claude-haiku-4-5";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 
 export interface ExplainInput {
   riskLevel: RiskLevel;
@@ -88,7 +88,7 @@ export async function explain(input: ExplainInput): Promise<Explanation> {
     input.model ?? process.env.TXGUARDIAN_MODEL ?? DEFAULT_MODEL;
 
   const { object } = await generateObject({
-    model: anthropic(modelId),
+    model: google(modelId),
     schema: ExplanationSchema,
     system: SYSTEM_PROMPT,
     prompt: buildUserPrompt(input),

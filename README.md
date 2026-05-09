@@ -112,7 +112,7 @@ pnpm install
 
 # 2. Configure env (server-side only — never client)
 cp .env.example apps/web/.env.local
-# Edit apps/web/.env.local — set RPC_URL and ANTHROPIC_API_KEY
+# Edit apps/web/.env.local — set RPC_URL and GOOGLE_GENERATIVE_AI_API_KEY
 
 # 3. Run the web app
 pnpm dev
@@ -140,7 +140,7 @@ See [DEPLOY.md](DEPLOY.md) for the full deploy recipe.
 | Var | Purpose | Notes |
 |---|---|---|
 | `RPC_URL` | Solana JSON-RPC endpoint | **Use Helius or QuickNode dev key.** Public RPCs rate-limit and will break the demo. |
-| `ANTHROPIC_API_KEY` | LLM translator | Required for Full mode. Fast mode works without it. |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | LLM translator (Gemini 2.5 Flash) | Required for Full mode. Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Fast mode works without it. |
 
 ## Demo flow (90-second pitch)
 
