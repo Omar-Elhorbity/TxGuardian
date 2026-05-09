@@ -6,11 +6,26 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { WalletContextProvider } from "@/components/WalletContextProvider";
 
+// Resolve the canonical site URL in this order:
+//   1. NEXT_PUBLIC_SITE_URL — explicit override (custom domain, self-host)
+//   2. VERCEL_PROJECT_PRODUCTION_URL — stable canonical Vercel domain
+//   3. VERCEL_URL — current deployment URL (preview / fallback)
+//   4. localhost:3000 — dev
+const resolvedSiteUrl = (() => {
+  const env = process.env.NEXT_PUBLIC_SITE_URL;
+  if (env) return env.startsWith("http") ? env : `https://${env}`;
+  const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercelProd) return `https://${vercelProd}`;
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}`;
+  return "http://localhost:3000";
+})();
+
 export const metadata: Metadata = {
   title: "TxGuardian — Pre-sign transaction safety for Solana",
   description:
     "Inspect any Solana transaction before you sign. Deterministic risk rules + plain-English AI translation.",
-  metadataBase: new URL("https://txguardian.vercel.app"),
+  metadataBase: new URL(resolvedSiteUrl),
   openGraph: {
     title: "TxGuardian",
     description:
