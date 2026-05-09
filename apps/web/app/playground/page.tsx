@@ -51,8 +51,8 @@ export default function PlaygroundPage() {
         </p>
       </header>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="space-y-5">
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div className="min-w-0 space-y-5">
           <SampleTxPicker onPick={runSample} disabled={busy} />
 
           <div className="panel p-4">
@@ -82,7 +82,7 @@ export default function PlaygroundPage() {
           )}
         </div>
 
-        <div className="panel-strong p-4">
+        <div className="panel-strong min-w-0 p-4">
           <div className="mb-2 flex items-center justify-between">
             <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-muted">
               TxRiskResult JSON
@@ -96,14 +96,14 @@ export default function PlaygroundPage() {
               {error}
             </div>
           )}
-          <pre className="max-h-[600px] overflow-auto rounded-md border border-border bg-surface-2 p-3 font-mono text-[11.5px] leading-[1.55] text-text-secondary">
+          <pre className="max-h-[600px] max-w-full overflow-auto whitespace-pre rounded-md border border-border bg-surface-2 p-3 font-mono text-[11.5px] leading-[1.55] text-text-secondary">
             {result
               ? JSON.stringify(result, null, 2)
               : activeSample
                 ? "// Loading…"
                 : "// Pick a sample to run analyze() and see the result."}
           </pre>
-          <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-surface-2 p-3 font-mono text-[11px] leading-[1.55] text-text-muted">
+          <pre className="mt-3 max-w-full overflow-x-auto whitespace-pre rounded-md border border-border bg-surface-2 p-3 font-mono text-[11px] leading-[1.55] text-text-muted">
 {`await analyze({
   transaction: <base64>,
   connection,
