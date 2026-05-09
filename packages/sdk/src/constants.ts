@@ -1,0 +1,166 @@
+/**
+ * Well-known program IDs and a curated drainer blocklist.
+ *
+ * The KNOWN_PROGRAMS allowlist is deliberately conservative — programs not on the
+ * list are flagged UNKNOWN_PROGRAM, prompting the user to look more carefully.
+ * False positives are intentional: a "this program isn't widely recognized" flag
+ * is far less harmful than missing a malicious program.
+ *
+ * The KNOWN_DRAINERS blocklist is sourced from public security disclosures.
+ * It is intentionally short: the goal is high precision (no false positives),
+ * not exhaustive coverage. Add entries with a citation in the trailing comment.
+ */
+
+export interface KnownProgram {
+  name: string;
+  /** Optional short description for UI surfaces. */
+  description?: string;
+}
+
+/**
+ * Allowlist of programs commonly used on Solana mainnet.
+ * Keys are base58 program IDs; values are display metadata.
+ */
+export const KNOWN_PROGRAMS: Record<string, KnownProgram> = {
+  // System & native
+  "11111111111111111111111111111111": {
+    name: "System Program",
+    description: "Native account and lamport operations.",
+  },
+  "ComputeBudget111111111111111111111111111111": {
+    name: "Compute Budget Program",
+    description: "Sets compute units and priority fees.",
+  },
+  Stake11111111111111111111111111111111111111: {
+    name: "Stake Program",
+    description: "Delegated staking.",
+  },
+  Vote111111111111111111111111111111111111111: {
+    name: "Vote Program",
+    description: "Validator voting.",
+  },
+  "Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo": {
+    name: "Memo Program (legacy)",
+    description: "Attaches arbitrary memo to a transaction.",
+  },
+  MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr: {
+    name: "Memo Program",
+    description: "Attaches arbitrary memo to a transaction.",
+  },
+
+  // SPL Token + Token-2022
+  TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA: {
+    name: "SPL Token",
+    description: "Classic SPL token program.",
+  },
+  TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb: {
+    name: "Token-2022",
+    description: "Token-2022 program with extensions.",
+  },
+  ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL: {
+    name: "Associated Token Account",
+    description: "Creates ATAs.",
+  },
+
+  // Major DeFi & NFT programs
+  JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4: {
+    name: "Jupiter Aggregator v6",
+    description: "DEX aggregator.",
+  },
+  whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc: {
+    name: "Orca Whirlpools",
+    description: "Concentrated liquidity DEX.",
+  },
+  "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP": {
+    name: "Orca Aquafarm",
+    description: "Orca farming.",
+  },
+  "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": {
+    name: "Raydium Liquidity Pool v4",
+    description: "AMM pools.",
+  },
+  CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK: {
+    name: "Raydium Concentrated Liquidity",
+    description: "CLMM pools.",
+  },
+  MarBmsSgKXdrN1egZf5sqe1TMThczhMLJhAiqmJTAhh: {
+    name: "Marinade Finance",
+    description: "Liquid staking.",
+  },
+  dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH: {
+    name: "Drift v2",
+    description: "Perpetuals exchange.",
+  },
+  KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD: {
+    name: "Kamino Lending",
+    description: "Lending protocol.",
+  },
+  TSWAPaqyCSx2KABk68Shruf4rp7CxcNi8hAsbdwmHbN: {
+    name: "Tensor",
+    description: "NFT marketplace.",
+  },
+  M2mx93ekt1fmXSVkTrUL9xVFHkmME8HTUi5Cyc5aF7K: {
+    name: "Magic Eden v2",
+    description: "NFT marketplace.",
+  },
+  metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s: {
+    name: "Metaplex Token Metadata",
+    description: "NFT metadata standard.",
+  },
+};
+
+/**
+ * Drainer blocklist. SHORT BY DESIGN — additions require a citation.
+ *
+ * SECURITY NOTE: This list is illustrative for the hackathon MVP. Production use
+ * MUST source from a continuously updated, auditable feed (e.g. Solana Foundation
+ * security disclosures, ScamSniffer, Blowfish public reports). Hardcoding is a
+ * stopgap.
+ *
+ * Each entry MUST have:
+ *   - `address`: base58 program id
+ *   - `name`: short label for UI
+ *   - `source`: where this came from (URL or report ID)
+ *   - `addedAt`: ISO date
+ */
+export interface KnownDrainer {
+  address: string;
+  name: string;
+  source: string;
+  addedAt: string;
+}
+
+export const KNOWN_DRAINERS: KnownDrainer[] = [
+  // Placeholder entries — replace with real, sourced addresses before any prod use.
+  // The set is intentionally small at MVP. Adding addresses without a verifiable
+  // public source is worse than an empty list.
+];
+
+/**
+ * Convenience lookup map for O(1) drainer checks.
+ */
+export const KNOWN_DRAINER_MAP: ReadonlyMap<string, KnownDrainer> = new Map(
+  KNOWN_DRAINERS.map((d) => [d.address, d]),
+);
+
+// Token program IDs as constants (avoid string typos elsewhere in the codebase).
+export const SPL_TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+export const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+export const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
+export const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
+
+export function isTokenProgram(programId: string): boolean {
+  return programId === SPL_TOKEN_PROGRAM_ID || programId === TOKEN_2022_PROGRAM_ID;
+}
+
+export function isComputeBudgetProgram(programId: string): boolean {
+  return programId === COMPUTE_BUDGET_PROGRAM_ID;
+}
+
+export function isKnownProgram(programId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(KNOWN_PROGRAMS, programId);
+}
+
+export function lookupProgramName(programId: string): string {
+  return KNOWN_PROGRAMS[programId]?.name ?? "Unknown program";
+}
