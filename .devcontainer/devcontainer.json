@@ -1,0 +1,32 @@
+{
+  "name": "TxGuardian (Solana + Next.js)",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "stable",
+      "profile": "default"
+    }
+  },
+  "postCreateCommand": "npm install -g pnpm@9.12.0 && bash scripts/setup-solana-toolchain.sh",
+  "remoteEnv": {
+    "PATH": "${containerEnv:HOME}/.cargo/bin:${containerEnv:HOME}/.local/share/solana/install/active_release/bin:${containerEnv:PATH}"
+  },
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js dev",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  }
+}
