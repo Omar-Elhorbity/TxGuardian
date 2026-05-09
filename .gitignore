@@ -33,3 +33,12 @@ yarn-error.log*
 # Test
 coverage/
 .turbo/
+
+# Anchor / Solana
+.anchor/
+target/
+test-ledger/
+*.so
+
+# Cargo
+**/Cargo.lock.bak

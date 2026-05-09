@@ -1,0 +1,24 @@
+[toolchain]
+anchor_version = "0.30.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+# Placeholder program id — replaced by `anchor keys sync` after the first
+# `anchor build` (see README "On-chain registry" section).
+[programs.localnet]
+txguardian_registry = "Fg6PaFpoGXkYsidMpWxqSkLb3vrouhTRTFVJxJ7nJjN8"
+
+[programs.devnet]
+txguardian_registry = "Fg6PaFpoGXkYsidMpWxqSkLb3vrouhTRTFVJxJ7nJjN8"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "pnpm exec mocha -r ts-node/register -t 1000000 tests/**/*.ts"
