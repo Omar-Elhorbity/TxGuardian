@@ -222,3 +222,32 @@ A running journal of how TxGuardian was built. Each phase ends with a commit and
 6. Client: badge + explanation + flag cards + decoded instructions + sticky recommendation bar
 
 **Next:** Phase 6 — `/docs`, `/about`, `/playground` lightweight pages.
+
+---
+
+## Phase 6 — Docs, About, Playground
+
+**Goal:** Round out the secondary surfaces. These pages are not the demo focus, so they trade depth for clarity.
+
+**Done:**
+- `/docs` — single-page docs with sticky sidebar nav (Quickstart, API reference, Risk flags, Integration patterns). Code blocks in `.surface-2` panels. Risk flags table mirrors the IA exactly: 5 active + 1 bonus + 1 documented (TOCTOU). Reinforces the "deterministic verdict always valid" invariant in prose. Two integration patterns documented: wallet adapter pre-sign hook + Next.js API route.
+- `/about` — product context page:
+  - Problem framing
+  - "Omar the DeFi grinder" persona block
+  - ASCII architecture diagram (parser → decoder → rules → scorer → AI translator)
+  - Roadmap table (Now / Next / v2 / v3)
+  - Hackathon attribution
+- `/playground` — two-column layout:
+  - Left: Sample picker (reuses `SampleTxPicker` component) + Mode toggle + (optional) RiskBadge once a result is loaded
+  - Right: Live `TxRiskResult` JSON output + the equivalent SDK call snippet
+  - Same `/api/fixtures` + `/api/analyze` flow as `/scan` — gives developers a self-serve sandbox without copy-pasting
+
+**Reused from Phase 5:**
+- `SampleTxPicker`, `RiskBadge`, fixtures route, analyze route — no new server code in this phase.
+
+**Not done by design:**
+- No on-page navigation / breadcrumbs (the top nav is sufficient for the MVP page count).
+- No search in docs (over-engineering for a 4-section page).
+- No live "Edit JSON" for playground (not a v1 feature).
+
+**Next:** Phase 7 — final docs pass, README links audit, ensure `.env.example` matches what the code reads, final commit.
