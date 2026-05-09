@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 /**
- * Seed the on-chain TxGuardian registry with demo attestations.
+ * Seed the on-chain TxGuardian registry.
  *
  * Initializes the singleton Registry PDA (idempotent — skips if already
  * initialized) and submits + attests a handful of programs so the /registry
- * page and /scan demo have data to display.
+ * page and /scan have data to display.
  *
  * Run from the repo root after `anchor build`:
  *
@@ -41,46 +41,46 @@ interface Sample {
   seed: number;
   severity: 1 | 2 | 3;
   reason: string;
-  /** Skip the attest step? Used to demo a "pending" entry. */
+  /** Skip the attest step? Surfaces a "pending" entry on the registry table. */
   pendingOnly?: boolean;
-  /** Revoke after attesting? Demos the revoked status. */
+  /** Revoke after attesting? Surfaces the "revoked" status. */
   revoke?: boolean;
   /** Notes for the operator (printed during seeding). */
   note?: string;
 }
 
 const SAMPLES: Sample[] = [
-  // Matches the DANGER fixture's unknown program (apps/web/lib/fixtures.ts seed=9).
+  // Matches the DANGER sample's unknown program (apps/web/lib/fixtures.ts seed=9).
   // After seeding, scanning the DANGER sample triggers an on-chain match in
   // addition to the existing static UNKNOWN_PROGRAM flag.
   {
     seed: 9,
     severity: 3,
-    reason: "Pattern matches known wallet drainer (demo entry)",
+    reason: "Pattern matches known wallet drainer signature",
     note: "Linked to /scan DANGER sample",
   },
-  // Matches the CAUTION fixture's unknown program (seed=5).
+  // Matches the CAUTION sample's unknown program (seed=5).
   {
     seed: 5,
     severity: 2,
-    reason: "Unverified contract used by suspicious aggregator (demo)",
+    reason: "Unverified contract used by suspicious aggregator",
     note: "Linked to /scan CAUTION sample",
   },
-  // Pending — demonstrates the lifecycle on the /registry table.
+  // Pending — surfaces the pending lifecycle on the /registry table.
   {
     seed: 21,
     severity: 3,
     reason: "Reported by community; pending admin review",
     pendingOnly: true,
-    note: "Demo of pending state",
+    note: "Pending lifecycle entry",
   },
-  // Revoked — false-positive cleanup demo.
+  // Revoked — false-positive cleanup.
   {
     seed: 22,
     severity: 1,
     reason: "Initially flagged, cleared after review",
     revoke: true,
-    note: "Demo of revoke flow",
+    note: "Revoked lifecycle entry",
   },
 ];
 

@@ -4,13 +4,13 @@ import type { SimulationDelta } from "./types";
 /**
  * Wrap connection.simulateTransaction with safe defaults. We never need
  * sigVerify=true (we are analyzing, not sending) and we always replace the
- * recent blockhash so demo fixtures with stale blockhashes still simulate.
+ * recent blockhash so transactions with stale blockhashes still simulate.
  *
  * Returns a SimulationDelta that summarizes ok/error. Token balance deltas
- * are left as a v1 enrichment — would require pre-fetching the signer's
- * token accounts and re-simulating with `accounts.addresses`. For MVP,
- * the spoof rule does a static intent check; this wrapper exists so the
- * developer "Raw data" toggle has something to show.
+ * are left as a future enrichment — would require pre-fetching the signer's
+ * token accounts and re-simulating with `accounts.addresses`. The spoof rule
+ * does a static intent check; this wrapper exists so the developer "Raw data"
+ * toggle has something to show.
  */
 export async function simulateSafely(
   vtx: VersionedTransaction,

@@ -9,11 +9,12 @@ import {
 import { createApproveInstruction } from "@solana/spl-token";
 
 /**
- * Demo fixture builders. Every call produces a deterministic base64 tx so
- * the demo replays cleanly. Server-side only — these never run on the client.
+ * Sample transaction builders. Every call produces a deterministic base64 tx
+ * so repeated scans return the same input. Server-side only — these never run
+ * on the client.
  *
- * The fixtures are NOT signed and are NEVER intended to be sent on-chain.
- * They exist solely to exercise the analyzer with realistic shapes.
+ * The samples are NOT signed and are NEVER intended to be sent on-chain. They
+ * exist solely to exercise the analyzer with realistic shapes.
  */
 
 const PLACEHOLDER_BLOCKHASH = "11111111111111111111111111111111";
@@ -88,8 +89,8 @@ export function buildCautionFixture(): string {
 }
 
 /**
- * DANGER — the demo hero. SPL Token Approve with u64::MAX to a delegate +
- * an unknown program call + a high priority fee. Triggers FULL_TOKEN_APPROVAL,
+ * DANGER — SPL Token Approve with u64::MAX to a delegate, plus an unknown
+ * program call and a high priority fee. Triggers FULL_TOKEN_APPROVAL,
  * UNKNOWN_PROGRAM, and UNUSUAL_FEE.
  */
 export function buildDangerFixture(): string {

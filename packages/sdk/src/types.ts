@@ -11,7 +11,7 @@ export type FlagId =
   | "MULTI_INSTRUCTION_COMPLEXITY"
   | "SIMULATION_SPOOF"
   | "UNUSUAL_FEE"
-  // Documented for v1, not actively detected at MVP:
+  // Schema-only; runtime detection ships with the browser extension:
   | "TOCTOU_PATTERN";
 
 export interface TxRiskFlag {

@@ -220,7 +220,7 @@ function EmptyState({ registryInitialized }: { registryInitialized: boolean }) {
             <code className="font-mono text-[12px] text-text-primary">
               pnpm tsx scripts/seed-registry.ts
             </code>{" "}
-            to bootstrap the singleton account and seed the demo entries.
+            to bootstrap the singleton account and seed the initial entries.
           </>
         )}
       </div>

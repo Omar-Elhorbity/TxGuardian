@@ -31,8 +31,8 @@ export interface RuleContext {
 export type Rule = (ctx: RuleContext) => TxRiskFlag | TxRiskFlag[] | null;
 
 /**
- * The full active rule list shipped at MVP. Order is significant only for UI
- * display — scoring is independent of order.
+ * The active rule list. Order is significant only for UI display — scoring
+ * is independent of order.
  *
  * Rules MUST be pure functions. Rules MUST NOT throw — return null on any
  * unexpected input. Rules MAY return multiple flags (e.g. multiple unknown

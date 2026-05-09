@@ -12,11 +12,10 @@ export default function AboutPage() {
           About TxGuardian
         </h1>
         <p className="mt-3 text-[15px] leading-[1.65] text-text-secondary">
-          A pre-sign safety layer for Solana — built as an open SDK any wallet,
-          dApp, or signing service can embed, backed by an on-chain attestation
-          registry deployed to devnet. Deterministic rules decide what's risky;
-          an AI translator makes the decision legible to a non-developer in
-          seconds.
+          A pre-sign safety layer for Solana — open SDK any wallet, dApp, or
+          signing service can embed, backed by an on-chain attestation
+          registry. Deterministic rules decide what's risky; an AI translator
+          makes the decision legible to a non-developer in seconds.
         </p>
       </header>
 
@@ -35,15 +34,15 @@ export default function AboutPage() {
 
       <section className="mt-10">
         <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
-          Persona — Omar the DeFi grinder
+          Who it's for
         </h2>
         <div className="panel mt-3 p-5 text-[14px] leading-[1.7] text-text-secondary">
-          Uses Phantom on desktop. Chases yields, airdrops, and new mints on X
-          and Discord. Fast-moving and FOMO-prone — signs transactions quickly
-          without reading raw instruction data. Relies on wallet simulation
-          previews, which makes him vulnerable to spoofing where the preview
-          hides the true intent. TxGuardian gives Omar a second opinion before
-          he signs.
+          Active DeFi users on Phantom and other Solana wallets. Fast-moving,
+          chasing yields, airdrops, and new mints — the kind of user who signs
+          transactions quickly without reading raw instruction data and relies
+          on wallet simulation previews. That reliance is exactly where
+          drainers attack. TxGuardian gives them a second opinion before they
+          sign.
         </div>
       </section>
 
@@ -114,8 +113,8 @@ export default function AboutPage() {
         <ol className="mt-3 space-y-3">
           <RoadmapRow
             phase="Now"
-            title="Web scanner + open SDK + on-chain registry"
-            body="Public Vercel scanner, framework-agnostic TypeScript SDK, Anchor program live on devnet feeding the drainer rule. Five active risk flags, AI translator (Gemini 2.5 Flash)."
+            title="Scanner + open SDK + on-chain registry"
+            body="Public scanner, framework-agnostic TypeScript SDK, Anchor program live on devnet feeding the drainer rule. Five active risk flags, AI translator (Gemini 2.5 Flash)."
           />
           <RoadmapRow
             phase="Next"
@@ -123,25 +122,22 @@ export default function AboutPage() {
             body="A Phantom-compatible extension that intercepts the signing prompt and shows TxGuardian's verdict inline. Activates runtime TOCTOU detection."
           />
           <RoadmapRow
-            phase="v2"
-            title="<TxGuardianWidget /> + npm publish"
+            phase="Then"
+            title="Embeddable widget + npm publish"
             body="A drop-in React component for dApps to show pre-sign risk checks before they ever route to the wallet. SDK published to npm with semantic versioning."
           />
           <RoadmapRow
-            phase="v3"
+            phase="Later"
             title="Multisig curator + enterprise API"
-            body="Registry admin moves to a multisig. Authenticated rate-limited REST API for wallets, custodians, exchanges. Continuously updated drainer feeds. SLA."
+            body="Registry admin moves to a multisig. Authenticated rate-limited REST API for wallets, custodians, exchanges. Continuously updated drainer feeds."
           />
         </ol>
       </section>
 
       <section className="mt-12 border-t border-border pt-6">
-        <p className="text-[13px] text-text-muted">
-          Built for the Dev3pack Global Hackathon (Cairo Hub), May 2026.
-        </p>
         <Link
           href="/scan"
-          className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-accent hover:text-accent-hover"
+          className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:text-accent-hover"
         >
           Try the scanner
           <ArrowRight

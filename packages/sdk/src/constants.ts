@@ -112,10 +112,10 @@ export const KNOWN_PROGRAMS: Record<string, KnownProgram> = {
 /**
  * Drainer blocklist. SHORT BY DESIGN — additions require a citation.
  *
- * SECURITY NOTE: This list is illustrative for the hackathon MVP. Production use
- * MUST source from a continuously updated, auditable feed (e.g. Solana Foundation
- * security disclosures, ScamSniffer, Blowfish public reports). Hardcoding is a
- * stopgap.
+ * This is the static fallback list. The primary feed lives on-chain in the
+ * txguardian_registry program; that's where new entries should land. Hardcoded
+ * additions here MUST source from a continuously updated, auditable feed
+ * (Solana Foundation security disclosures, ScamSniffer, Blowfish public reports).
  *
  * Each entry MUST have:
  *   - `address`: base58 program id
@@ -131,9 +131,9 @@ export interface KnownDrainer {
 }
 
 export const KNOWN_DRAINERS: KnownDrainer[] = [
-  // Placeholder entries — replace with real, sourced addresses before any prod use.
-  // The set is intentionally small at MVP. Adding addresses without a verifiable
-  // public source is worse than an empty list.
+  // Empty by design. The on-chain registry is the primary feed; this static
+  // list exists only as a fallback for offline / failed-RPC scenarios. Adding
+  // an address here without a verifiable public source is worse than nothing.
 ];
 
 /**

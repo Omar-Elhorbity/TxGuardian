@@ -66,12 +66,12 @@ export default function DocsPage() {
             Quickstart
           </h2>
           <p className="mt-2 text-[14px] leading-[1.65] text-text-secondary">
-            The SDK is currently shipped as the workspace package{" "}
+            The SDK ships as the workspace package{" "}
             <code className="font-mono text-[12px] text-text-primary">
               @txguardian/sdk
             </code>{" "}
-            in this monorepo. npm publish lands post-hackathon. To use it now,
-            clone and link:
+            in this monorepo. An npm-published build is on the roadmap. To use
+            it today, clone and link:
           </p>
           <CodeBlock>
 {`git clone https://github.com/Omar-Elhorbity/TxGuardian

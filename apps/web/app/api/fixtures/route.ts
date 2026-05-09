@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/fixtures?type=safe|caution|danger
  *
- * Builds and returns a deterministic demo transaction in base64. Used by
+ * Builds and returns a deterministic sample transaction in base64. Used by
  * the /scan page's "Try a sample" buttons. The transactions are NOT signed
  * and are NEVER intended to be sent on-chain — they exist purely to exercise
  * the analyzer.
