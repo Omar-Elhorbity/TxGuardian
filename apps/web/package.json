@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@txguardian/sdk": "workspace:*",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/web3.js": "^1.95.4",
     "geist": "^1.3.1",
     "lucide-react": "^0.460.0",

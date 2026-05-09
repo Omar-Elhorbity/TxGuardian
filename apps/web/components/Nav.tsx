@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Shield, Github } from "lucide-react";
+import { WalletButton } from "./WalletButton";
 
 const links = [
   { href: "/scan", label: "Scan" },
@@ -46,7 +47,7 @@ export function Nav() {
 
         <div className="ml-auto flex items-center gap-2">
           <a
-            href="https://github.com"
+            href="https://github.com/Omar-Elhorbity/TxGuardian"
             target="_blank"
             rel="noreferrer"
             aria-label="GitHub"
@@ -54,9 +55,7 @@ export function Nav() {
           >
             <Github className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </a>
-          <Link href="/scan" className="btn btn-primary text-[13px]">
-            Scan a transaction
-          </Link>
+          <WalletButton />
         </div>
       </div>
     </nav>

@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { WalletContextProvider } from "@/components/WalletContextProvider";
 
 export const metadata: Metadata = {
   title: "TxGuardian — Pre-sign transaction safety for Solana",
@@ -36,9 +37,11 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
       <body className="min-h-screen bg-base text-text-primary antialiased">
-        <Nav />
-        <main id="main">{children}</main>
-        <Footer />
+        <WalletContextProvider>
+          <Nav />
+          <main id="main">{children}</main>
+          <Footer />
+        </WalletContextProvider>
       </body>
     </html>
   );
