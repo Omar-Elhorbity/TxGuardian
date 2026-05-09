@@ -86,6 +86,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
   if (typeof provider.signTransaction === "function") {
     const orig = provider.signTransaction.bind(provider);
     provider.signTransaction = async (tx: AnyTx) => {
+      console.debug("[TxGuardian] intercepted signTransaction");
       const decision = await analyzeAndAwait([tx]);
       if (decision === "reject") {
         throw rejectionError();
@@ -97,6 +98,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
   if (typeof provider.signAllTransactions === "function") {
     const orig = provider.signAllTransactions.bind(provider);
     provider.signAllTransactions = async (txs: AnyTx[]) => {
+      console.debug("[TxGuardian] intercepted signAllTransactions");
       const decision = await analyzeAndAwait(txs);
       if (decision === "reject") {
         throw rejectionError();
@@ -108,6 +110,7 @@ function patchProvider(provider: PhantomProvider, label: string): void {
   if (typeof provider.signAndSendTransaction === "function") {
     const orig = provider.signAndSendTransaction.bind(provider);
     provider.signAndSendTransaction = async (tx: AnyTx, opts?: unknown) => {
+      console.debug("[TxGuardian] intercepted signAndSendTransaction");
       const decision = await analyzeAndAwait([tx]);
       if (decision === "reject") {
         throw rejectionError();
@@ -162,6 +165,10 @@ interface WalletStandardWallet {
 function patchWalletStandard(wallet: WalletStandardWallet): void {
   if (wallet.__txgPatched || !wallet.features) return;
   wallet.__txgPatched = true;
+  console.debug(
+    "[TxGuardian] patching wallet (Wallet Standard):",
+    Object.keys(wallet.features),
+  );
 
   const signFeature = wallet.features["solana:signTransaction"];
   if (signFeature?.signTransaction) {
@@ -194,25 +201,46 @@ function patchWalletStandard(wallet: WalletStandardWallet): void {
   }
 }
 
+// Per the @wallet-standard/app protocol:
+//   - Wallets dispatch 'wallet-standard:register-wallet' with their own
+//     callback as `detail`. We invoke that callback with our register API
+//     so they hand us the wallet object.
+//   - We dispatch 'wallet-standard:app-ready' with our register API as
+//     `detail`. Wallets that loaded BEFORE we attached our listener catch
+//     this and call the API to (re-)register.
+
+const walletStandardApi = {
+  register(wallet: WalletStandardWallet): () => void {
+    patchWalletStandard(wallet);
+    return () => {
+      // No-op unregister — we never tear down patches.
+    };
+  },
+};
+
 // 1. Listen for future registrations.
 window.addEventListener(
   "wallet-standard:register-wallet",
   (event) => {
-    type RegisterEvent = CustomEvent<(api: { register(w: WalletStandardWallet): void }) => void>;
+    console.debug("[TxGuardian] wallet-standard:register-wallet event");
+    type RegisterEvent = CustomEvent<
+      (api: typeof walletStandardApi) => void
+    >;
     const { detail } = event as RegisterEvent;
     if (typeof detail !== "function") return;
-    detail({
-      register(wallet: WalletStandardWallet) {
-        patchWalletStandard(wallet);
-      },
-    });
+    detail(walletStandardApi);
   },
   false,
 );
 
 // 2. Trigger an "app-ready" event so wallets registered before our listener
-//    re-announce themselves to us. Per the wallet-standard spec.
-window.dispatchEvent(new Event("wallet-standard:app-ready"));
+//    re-announce themselves to us. MUST include the api as detail per spec.
+window.dispatchEvent(
+  new CustomEvent("wallet-standard:app-ready", {
+    detail: walletStandardApi,
+  }),
+);
+console.debug("[TxGuardian] dispatched wallet-standard:app-ready");
 
 // --- Analyze + show modal pipeline ------------------------------------------
 
