@@ -5,6 +5,7 @@ import {
   ShieldX,
   KeyRound,
   ExternalLink,
+  Puzzle,
 } from "lucide-react";
 
 const PROGRAM_ID = "Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7";
@@ -101,7 +102,7 @@ export default function HomePage() {
           <Step
             n={1}
             title="Bring the transaction"
-            body="Paste base64, try a sample, or connect Phantom to build one against your own wallet."
+            body="Paste base64, try a sample, or install the browser extension and any dApp's signing request gets intercepted automatically."
           />
           <Step
             n={2}
@@ -119,6 +120,64 @@ export default function HomePage() {
             body="Gemini 2.5 Flash renders the verdict into a 5-second read. Translator only — never decides risk."
           />
         </ol>
+      </section>
+
+      {/* Browser extension callout */}
+      <section className="mt-20" aria-labelledby="extension-heading">
+        <div className="panel-strong p-6 md:p-8">
+          <div className="flex items-start gap-4">
+            <div className="rounded-md bg-accent-soft p-2 text-accent">
+              <Puzzle
+                className="h-5 w-5"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2
+                id="extension-heading"
+                className="text-[18px] font-semibold tracking-tight"
+              >
+                Already protected on every dApp.
+              </h2>
+              <p className="mt-2 max-w-[640px] text-[14px] leading-[1.6] text-text-secondary">
+                The TxGuardian browser extension sits between your wallet and
+                any Solana dApp. Every signing request is intercepted, analyzed
+                via the same engine that powers this scanner, and surfaced as
+                a verdict overlay before your wallet's prompt appears.
+              </p>
+              <ul className="mt-4 grid gap-1.5 text-[13px] text-text-secondary md:grid-cols-2">
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-risk-safe">✓</span>
+                  Phantom + every Wallet Standard wallet
+                </li>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-risk-safe">✓</span>
+                  ~30 KB, no React, no telemetry
+                </li>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-risk-safe">✓</span>
+                  Never touches your keys
+                </li>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-risk-safe">✓</span>
+                  Open source, load unpacked
+                </li>
+              </ul>
+              <Link
+                href="/extension"
+                className="mt-5 inline-flex items-center gap-1 text-[13px] text-accent hover:text-accent-hover"
+              >
+                Install in 4 steps
+                <ArrowRight
+                  className="h-3.5 w-3.5"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* On-chain registry callout */}
@@ -184,7 +243,7 @@ export default function HomePage() {
       </section>
 
       {/* SDK callout */}
-      <section className="mt-8" aria-labelledby="sdk-heading">
+      <section className="mt-20" aria-labelledby="sdk-heading">
         <div className="panel-strong p-6 md:p-8">
           <div className="flex items-start gap-4">
             <div className="rounded-md bg-accent-soft p-2 text-accent">

@@ -12,10 +12,11 @@ export default function AboutPage() {
           About TxGuardian
         </h1>
         <p className="mt-3 text-[15px] leading-[1.65] text-text-secondary">
-          A pre-sign safety layer for Solana — open SDK any wallet, dApp, or
-          signing service can embed, backed by an on-chain attestation
-          registry. Deterministic rules decide what's risky; an AI translator
-          makes the decision legible to a non-developer in seconds.
+          A pre-sign safety layer for Solana. Four shipping surfaces today —
+          web scanner, browser extension, framework-agnostic SDK, and an
+          on-chain attestation registry — all sharing the same engine.
+          Deterministic rules decide what's risky; an AI translator makes
+          the decision legible to a non-developer in seconds.
         </p>
       </header>
 
@@ -52,22 +53,24 @@ export default function AboutPage() {
         </h2>
         <div className="panel mt-3 p-5">
           <pre className="overflow-x-auto font-mono text-[11.5px] leading-[1.7] text-text-secondary">
-{`User → /scan (Next.js) → /api/analyze → @txguardian/sdk
-                                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                          ├─ Decoder    (instruction summaries; memo stripped)
-                                          ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                          ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                          ├─ Rules      (deterministic — source of truth) ←┘
-                                          ├─ Scorer     (severity → 0–100 → recommendation)
-                                          └─ Translator (Gemini 2.5 Flash — never decides risk)`}
+{`Web scanner   ┐
+Extension     ┤── POST /api/analyze ── @txguardian/sdk
+Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
+                                         ├─ Decoder    (instruction summaries; memo stripped)
+                                         ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
+                                         ├─ Registry   (on-chain getProgramAccounts) ─────┐
+                                         ├─ Rules      (deterministic — source of truth) ←┘
+                                         ├─ Scorer     (severity → 0–100 → recommendation)
+                                         └─ Translator (Gemini 2.5 Flash — never decides risk)`}
           </pre>
         </div>
         <p className="mt-3 text-[13px] leading-[1.65] text-text-muted">
-          The deterministic engine is the source of truth on risk. The LLM only
-          renders the verdict into prose — it cannot raise, lower, or invent
-          flags, and the recommendation is enum-locked to the deterministic
-          level. The on-chain registry feeds confirmed attestations into the
-          drainer rule alongside a hardcoded fallback list.
+          Three client surfaces share one engine. The deterministic engine is
+          the source of truth on risk; the LLM only renders the verdict into
+          prose — it cannot raise, lower, or invent flags, and the
+          recommendation is enum-locked to the deterministic level. The
+          on-chain registry feeds confirmed attestations into the drainer rule
+          alongside a hardcoded fallback list.
         </p>
       </section>
 
@@ -113,13 +116,13 @@ export default function AboutPage() {
         <ol className="mt-3 space-y-3">
           <RoadmapRow
             phase="Now"
-            title="Scanner + open SDK + on-chain registry"
-            body="Public scanner, framework-agnostic TypeScript SDK, Anchor program live on devnet feeding the drainer rule. Five active risk flags, AI translator (Gemini 2.5 Flash)."
+            title="Scanner + SDK + on-chain registry + browser extension"
+            body="All four surfaces shipping. Public web scanner with sign-and-send, framework-agnostic TypeScript SDK, Anchor program live on devnet feeding the drainer rule, and a Chrome extension that intercepts every signing request on every dApp."
           />
           <RoadmapRow
             phase="Next"
-            title="Browser extension"
-            body="A Phantom-compatible extension that intercepts the signing prompt and shows TxGuardian's verdict inline. Activates runtime TOCTOU detection."
+            title="Solana Mobile app"
+            body="Native Android app for the Seeker phone. Mobile Wallet Adapter integration so the same scanner UX works against Phantom mobile / Solflare mobile. QR-scan a transaction on the go, decide before signing."
           />
           <RoadmapRow
             phase="Then"
@@ -128,8 +131,8 @@ export default function AboutPage() {
           />
           <RoadmapRow
             phase="Later"
-            title="Multisig curator + enterprise API"
-            body="Registry admin moves to a multisig. Authenticated rate-limited REST API for wallets, custodians, exchanges. Continuously updated drainer feeds."
+            title="Multisig curator + Phantom Blocks + enterprise API"
+            body="Registry admin moves to a multisig. Phantom Blocks partnership feeds our threat intelligence directly into Phantom's built-in protection. Authenticated rate-limited REST API for wallets, custodians, exchanges."
           />
         </ol>
       </section>

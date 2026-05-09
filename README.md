@@ -1,18 +1,17 @@
 # TxGuardian
 
-Pre-sign transaction safety for Solana. Open SDK, on-chain attestation registry, web scanner.
+Pre-sign transaction safety for Solana. Four shipping surfaces, one engine.
 
 TxGuardian closes the gap between **what a wallet preview says** and **what a transaction's instructions actually authorize**. A deterministic rule engine — backed by a Solana program holding a community-curated drainer/risk feed — decides what's risky. An AI translator turns the verdict into plain English. No signing surface, no key access.
 
-## Components
+## What ships
 
-- **`@txguardian/sdk`** — TypeScript SDK. One function: `analyze(options) → TxRiskResult`. Framework-agnostic, embeddable in wallets, dApps, signing services.
-- **`txguardian_registry`** — Anchor program (Rust) deployed on Solana devnet. The on-chain feed for the drainer/risk blocklist.
-- **`@txguardian/web`** — Next.js scanner. Public-facing tool, developer playground, SDK docs, live registry view.
+- **Web scanner** (`apps/web`) — Next.js public scanner. Paste a transaction, connect a wallet, sign-and-send.
+- **Browser extension** (`apps/extension`) — Chrome/Brave/Arc Manifest V3. Sits between any Solana dApp and your wallet, intercepts every signing request, shows the verdict before the wallet's prompt.
+- **TypeScript SDK** (`packages/sdk`) — `@txguardian/sdk`. One function: `analyze(options) → TxRiskResult`. Framework-agnostic, embeddable in wallets, dApps, signing services.
+- **On-chain registry** (`programs/txguardian-registry`) — Anchor program (Rust) deployed on Solana devnet. The decentralized drainer/risk feed. Anyone can submit, an admin keypair attests, the SDK reads at scan time.
 
 ## On-chain registry
-
-The drainer blocklist isn't hardcoded. It lives on-chain — anyone can submit a flag, an admin keypair confirms or revokes, the SDK reads confirmed entries via `getProgramAccounts` at scan time.
 
 | Field | Value |
 |---|---|
@@ -25,14 +24,15 @@ The drainer blocklist isn't hardcoded. It lives on-chain — anyone can submit a
 ## Architecture
 
 ```
-User → /scan (Next.js) → /api/analyze → @txguardian/sdk
-                                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                          ├─ Decoder    (instruction summaries; memo content stripped)
-                                          ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                          ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                          ├─ Rules      (deterministic — source of truth) ←┘
-                                          ├─ Scorer     (severity → 0–100 → recommendation)
-                                          └─ Translator (Gemini 2.5 Flash — never decides risk)
+Web scanner   ┐
+Extension     ┤── POST /api/analyze ── @txguardian/sdk
+Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
+                                         ├─ Decoder    (instruction summaries; memo stripped)
+                                         ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
+                                         ├─ Registry   (on-chain getProgramAccounts) ─────┐
+                                         ├─ Rules      (deterministic — source of truth) ←┘
+                                         ├─ Scorer     (severity → 0–100 → recommendation)
+                                         └─ Translator (Gemini 2.5 Flash — never decides risk)
 ```
 
 The deterministic engine is the source of truth on **risk**. The LLM only translates — it cannot raise, lower, or invent flags, and the recommendation is enum-locked to the deterministic level.
@@ -47,96 +47,107 @@ The deterministic engine is the source of truth on **risk**. The LLM only transl
 | `UNKNOWN_PROGRAM` | Medium | Program not in well-known allowlist |
 | `MULTI_INSTRUCTION_COMPLEXITY` | Medium | 5+ non-ComputeBudget instructions |
 | `UNUSUAL_FEE` | Low | Priority fee ≥ 1M micro-lamports/CU |
-| `TOCTOU_PATTERN` | Medium | Schema reserved — runtime detection is roadmap work |
+| `TOCTOU_PATTERN` | Medium | Schema reserved — runtime detection on the roadmap |
 
 ## Repo layout
 
 ```
 TxGuardian/
-├── programs/txguardian-registry/   # Anchor program (Rust)
-│   ├── src/
-│   │   ├── lib.rs                # entry, declare_id!, instruction wiring
-│   │   ├── state.rs              # Registry + Attestation accounts
-│   │   ├── errors.rs
-│   │   ├── events.rs
-│   │   └── instructions/         # initialize, submit, attest, revoke, update_admin
-│   └── Cargo.toml
+├── programs/txguardian-registry/   # Anchor program (Rust, devnet)
+│   └── src/                        # state, errors, events, 5 instructions
 │
 ├── packages/sdk/                   # @txguardian/sdk (TypeScript)
-│   └── src/
-│       ├── index.ts              # analyze() entry point + public re-exports
-│       ├── parser.ts             # legacy + v0 + ALT resolution + Token-2022
-│       ├── decode.ts             # instruction → human summary; memo stripped
-│       ├── simulate.ts           # connection.simulateTransaction wrapper
-│       ├── registry.ts           # on-chain feed reader (getProgramAccounts + memcmp)
-│       ├── rules/                # 6 deterministic rule modules
-│       ├── scorer.ts             # severity → 0–100 + riskLevel + recommendation
-│       ├── explain.ts            # Vercel AI SDK + Zod, translator-only
-│       ├── constants.ts          # KNOWN_PROGRAMS, KNOWN_DRAINERS, helpers
-│       └── types.ts
+│   └── src/                        # parser, decode, simulate, registry, rules,
+│                                   # scorer, explain, constants, types
 │
-├── apps/web/                       # @txguardian/web (Next.js)
+├── apps/web/                       # Next.js scanner (public-facing)
 │   ├── app/
-│   │   ├── scan/page.tsx         # The scanner
-│   │   ├── registry/page.tsx     # Live on-chain registry view
+│   │   ├── page.tsx                # /
+│   │   ├── scan/page.tsx           # /scan — paste/sample + sign-and-send
+│   │   ├── extension/page.tsx      # /extension — install guide
+│   │   ├── registry/page.tsx       # /registry — live on-chain feed
 │   │   ├── docs/page.tsx
-│   │   ├── playground/page.tsx
 │   │   ├── about/page.tsx
+│   │   ├── playground/page.tsx
+│   │   ├── demo-sign/page.tsx      # extension test surface
 │   │   └── api/
 │   │       ├── analyze/route.ts
-│   │       └── fixtures/route.ts
-│   ├── components/               # RiskBadge, FlagCard, ExplanationBox, etc.
-│   └── lib/                      # rpc, fixtures, json-safe
+│   │       ├── fixtures/route.ts
+│   │       └── registry/route.ts
+│   └── components/
 │
-├── tests/                          # Anchor TS tests
+├── apps/extension/                 # Browser extension (Manifest V3)
+│   ├── src/
+│   │   ├── page.ts                 # MAIN-world wallet patches + modal
+│   │   ├── content.ts              # ISOLATED bridge (page <-> service worker)
+│   │   ├── background.ts           # Service worker — POSTs /api/analyze
+│   │   └── types.ts
+│   ├── manifest.config.ts
+│   ├── vite.config.ts
+│   └── dist/                       # Tracked in git for load-unpacked
+│
+├── tests/                          # Anchor TS tests (9 cases)
 ├── scripts/                        # toolchain installer, registry seed, tx builder
-├── .devcontainer/                  # auto-install Solana + Anchor on Codespace start
-├── Anchor.toml
-├── Cargo.toml                      # Rust workspace root
-└── package.json                    # pnpm workspace root
+├── .devcontainer/                  # Codespace auto-setup
+└── Anchor.toml + Cargo.toml + pnpm-workspace.yaml
 ```
 
 ## Local setup
 
-Requires **Node 20+**, **pnpm 9+**, and (for the Rust program) **Rust stable + Solana CLI 1.18.x + Anchor 0.32.x**. The provided `.devcontainer/` and `scripts/setup-solana-toolchain.sh` install everything in a fresh Codespace.
+Requires **Node 20+** and **pnpm 9+**. For the Rust program: **Rust stable + Solana CLI 1.18.x + Anchor 0.32.x** (the `scripts/setup-solana-toolchain.sh` installer handles this).
 
 ```bash
-# 1. Install JS deps
+# 1. Install
 pnpm install
 
-# 2. Configure env (server-side only — never client)
+# 2. Env
 cp .env.example apps/web/.env.local
-# Edit apps/web/.env.local — set RPC_URL and GOOGLE_GENERATIVE_AI_API_KEY
+# Set RPC_URL (Helius/QuickNode dev key recommended) and GOOGLE_GENERATIVE_AI_API_KEY
 
 # 3. Run the web app
 pnpm dev
-# Open http://localhost:3000
+# → http://localhost:3000
 ```
 
-For the on-chain side (deploying your own copy or seeding the registry):
+For the Anchor program (only needed if redeploying / seeding):
 
 ```bash
-bash scripts/setup-solana-toolchain.sh   # installs Solana CLI + Anchor
+bash scripts/setup-solana-toolchain.sh
 anchor build
-anchor test                               # 9 cases
-pnpm seed-registry                        # populates the live registry
+anchor test                # 9 cases
+pnpm seed-registry         # populates the live registry with demo entries
 ```
+
+For the browser extension:
+
+```bash
+pnpm --filter @txguardian/extension build
+# Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
+```
+
+Full extension install guide at [`/extension`](http://localhost:3000/extension) once dev is running.
 
 ### Required env
 
 | Var | Purpose | Notes |
 |---|---|---|
-| `RPC_URL` | Solana JSON-RPC endpoint | Use Helius or QuickNode dev key. Public RPCs rate-limit. |
+| `RPC_URL` | Solana JSON-RPC endpoint | Helius / QuickNode dev key. Public RPCs rate-limit. |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | LLM translator (Gemini 2.5 Flash) | Required for Full mode. Free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Fast mode works without it. |
 
-## Quick tour
+## Demo flow (~90 seconds)
 
-1. Open `/scan`
-2. Click **Danger sample** — auto-loads a transaction with `Token::Approve(amount=u64::MAX)`
-3. Result: red verdict, multiple flags including the on-chain registry match, plain-English explanation
-4. Open `/registry` — live on-chain feed, the program ID, the Explorer link
-5. Click **Safe sample** — clean SOL transfer, green verdict
-6. `/docs` — five-line SDK integration
+1. **Open `/`** — read the lede, point at the side-by-side comparison hero.
+2. **Click `/scan`** → click **Danger sample**.
+   - Wallet connection rebuilds the sample with your pubkey + fresh blockhash.
+   - Result: red verdict, multiple flags including the on-chain registry match.
+   - Expand the on-chain flag to show `evidence.source: "onchain"` — proves the deployed Anchor program is feeding the rule.
+3. **Open `/registry`** — show the live entries, click the program ID to open Solana Explorer (real on-chain bytecode + transaction history).
+4. **Open `/extension`** — point at install steps. If the extension is loaded:
+5. **Open `/demo-sign`** → click **Sign test transaction**.
+   - The TxGuardian extension modal slides up with the verdict (Safe — clean self-transfer).
+   - Approve → Phantom's prompt opens for final confirmation.
+   - "Same engine, three surfaces. The wallet always has the final say."
+6. **Cut to `/docs`** — show the 5-line SDK integration.
 
 ## License
 

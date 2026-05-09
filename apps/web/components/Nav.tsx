@@ -4,9 +4,9 @@ import { WalletButton } from "./WalletButton";
 
 const links = [
   { href: "/scan", label: "Scan" },
-  { href: "/docs", label: "Docs" },
-  { href: "/playground", label: "Playground" },
+  { href: "/extension", label: "Extension" },
   { href: "/registry", label: "Registry" },
+  { href: "/docs", label: "Docs" },
   { href: "/about", label: "About" },
 ];
 
