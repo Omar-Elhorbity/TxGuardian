@@ -27,16 +27,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // The geist `.variable` classes set `--font-geist-sans` and `--font-geist-mono`
+  // on <html>. globals.css picks those up via `--font-sans` / `--font-mono`
+  // so the design tokens stay the single source of truth.
   return (
     <html
       lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable}`}
-      style={{
-        // Bridge next/font CSS variables into our token system.
-        // The names align with --font-sans / --font-mono in globals.css.
-        ["--font-sans" as string]: GeistSans.style.fontFamily,
-        ["--font-mono" as string]: GeistMono.style.fontFamily,
-      }}
     >
       <body className="min-h-screen bg-base text-text-primary antialiased">
         <Nav />

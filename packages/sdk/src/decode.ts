@@ -1,4 +1,4 @@
-import type { ParsedInstruction, DecodedInstruction } from "./types.js";
+import type { ParsedInstruction, DecodedInstruction } from "./types";
 import {
   SPL_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -7,7 +7,7 @@ import {
   isComputeBudgetProgram,
   isTokenProgram,
   lookupProgramName,
-} from "./constants.js";
+} from "./constants";
 
 const U64_MAX = (1n << 64n) - 1n;
 

@@ -45,9 +45,12 @@
     /* Focus ring (always visible on keyboard nav) */
     --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
 
-    /* Fonts (next/font fills these in via inline style) */
-    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    /* Fonts — geist's CSS variables (set by GeistSans.variable / GeistMono.variable
+       on <html>) resolve here. Fallback stack covers the load gap. */
+    --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, sans-serif;
+    --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas,
+      monospace;
   }
 
   html,

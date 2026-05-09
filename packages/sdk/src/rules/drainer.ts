@@ -1,6 +1,6 @@
-import type { TxRiskFlag } from "../types.js";
-import { KNOWN_DRAINER_MAP } from "../constants.js";
-import type { Rule } from "./index.js";
+import type { TxRiskFlag } from "../types";
+import { KNOWN_DRAINER_MAP } from "../constants";
+import type { Rule } from "./index";
 
 /**
  * Flag any program in the transaction that matches the curated drainer

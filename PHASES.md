@@ -315,3 +315,25 @@ Likely first-build issues to watch for:
 ## Project status
 
 **Build complete.** Repo is committed across 7 phases with one commit per phase. Ready to install + run.
+
+---
+
+## Phase 8 — Hotfix: bundler-friendly imports + Next 15.5 / React 19
+
+**Goal:** Unblock the Codespaces build. First `pnpm dev` failed on `Module not found: Can't resolve './parser.js'` — Next's bundler (webpack + Turbopack) doesn't auto-resolve `.js` extensions to `.ts` for transpiled workspace packages, even when `moduleResolution: "Bundler"` is set in the package's tsconfig.
+
+**Root cause:** The SDK was written with `.js` extensions on internal imports (the NodeNext-friendly form). Since the SDK is consumed via `transpilePackages` from raw TS source, the bundler needs extensionless imports OR a webpack `extensionAlias` config — and Turbopack (Next 15's default dev bundler) doesn't accept the latter.
+
+**Done:**
+- Stripped `.js` extensions from all 43 internal SDK imports across 13 files (`packages/sdk/src/**`). Single sed pass; verified zero remaining. `@solana/web3.js` package imports are unaffected (legitimate package name).
+- Bumped `next` ^15.0.3 → ^15.5.0, `react` ^18.3.1 → ^19.0.0, `react-dom` → ^19.0.0, `@types/react` / `@types/react-dom` → ^19. `eslint-config-next` aligned to ^15.5.0.
+- Cleaned up `apps/web/app/layout.tsx`: dropped the awkward inline `style={{["--font-sans"]: ...fontFamily}}` cast trick. Now relies on geist's `.variable` className setting `--font-geist-sans` / `--font-geist-mono` on `<html>`, with `globals.css` resolving `--font-sans` / `--font-mono` via `var(--font-geist-sans)`. Single source of truth.
+- Removed empty `experimental: {}` block from `next.config.ts`.
+
+**Why extensionless was the right fix (vs. webpack `extensionAlias`):**
+- Works in webpack AND Turbopack with no config.
+- Works in any bundler that consumes TS source (Vite, esbuild, etc.).
+- The SDK isn't published as a standalone ESM package — it ships as workspace-internal raw TS. NodeNext-style `.js` imports were premature optimization for a publication path that doesn't exist yet.
+- If we ever publish the SDK, a build step (`tsc` with `module: NodeNext`) will rewrite imports correctly.
+
+**No semantic changes:** all type signatures, exports, and runtime behavior unchanged. Pure import-path refactor + dependency bump.

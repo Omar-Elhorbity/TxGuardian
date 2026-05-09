@@ -1,6 +1,6 @@
-import type { TxRiskFlag } from "../types.js";
-import { isComputeBudgetProgram } from "../constants.js";
-import type { Rule } from "./index.js";
+import type { TxRiskFlag } from "../types";
+import { isComputeBudgetProgram } from "../constants";
+import type { Rule } from "./index";
 
 const COMPLEX_THRESHOLD = 5;
 

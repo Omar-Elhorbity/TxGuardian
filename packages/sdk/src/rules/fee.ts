@@ -1,6 +1,6 @@
-import type { TxRiskFlag } from "../types.js";
-import { COMPUTE_BUDGET_PROGRAM_ID } from "../constants.js";
-import type { Rule } from "./index.js";
+import type { TxRiskFlag } from "../types";
+import { COMPUTE_BUDGET_PROGRAM_ID } from "../constants";
+import type { Rule } from "./index";
 
 const SET_COMPUTE_UNIT_PRICE = 3;
 /**

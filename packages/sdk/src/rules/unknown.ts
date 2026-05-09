@@ -1,6 +1,6 @@
-import type { TxRiskFlag } from "../types.js";
-import { isKnownProgram, KNOWN_DRAINER_MAP } from "../constants.js";
-import type { Rule } from "./index.js";
+import type { TxRiskFlag } from "../types";
+import { isKnownProgram, KNOWN_DRAINER_MAP } from "../constants";
+import type { Rule } from "./index";
 
 /**
  * Inverse-allowlist rule: any program not on the well-known list earns

@@ -8,7 +8,7 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import bs58 from "bs58";
-import type { ParsedTransaction, ParsedInstruction } from "./types.js";
+import type { ParsedTransaction, ParsedInstruction } from "./types";
 
 /**
  * Hard cap on input size. A real Solana transaction is at most 1232 bytes

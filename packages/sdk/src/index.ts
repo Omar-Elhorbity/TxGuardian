@@ -1,10 +1,10 @@
-import type { AnalyzeOptions, TxRiskResult } from "./types.js";
-import { parseTransaction, toVersionedTransaction } from "./parser.js";
-import { decodeAll } from "./decode.js";
-import { simulateSafely } from "./simulate.js";
-import { runRules } from "./rules/index.js";
-import { scoreFlags } from "./scorer.js";
-import { explainCached } from "./explain.js";
+import type { AnalyzeOptions, TxRiskResult } from "./types";
+import { parseTransaction, toVersionedTransaction } from "./parser";
+import { decodeAll } from "./decode";
+import { simulateSafely } from "./simulate";
+import { runRules } from "./rules/index";
+import { scoreFlags } from "./scorer";
+import { explainCached } from "./explain";
 
 /**
  * Public SDK entry point. Analyzes a Solana transaction and returns a
@@ -96,13 +96,13 @@ export type {
   ParsedTransaction,
   ParsedInstruction,
   SimulationDelta,
-} from "./types.js";
+} from "./types";
 
 // Public utility re-exports.
-export { parseTransaction, ParseError, toVersionedTransaction } from "./parser.js";
-export { decodeAll, decodeInstruction } from "./decode.js";
-export { runRules } from "./rules/index.js";
-export { scoreFlags } from "./scorer.js";
+export { parseTransaction, ParseError, toVersionedTransaction } from "./parser";
+export { decodeAll, decodeInstruction } from "./decode";
+export { runRules } from "./rules/index";
+export { scoreFlags } from "./scorer";
 export {
   KNOWN_PROGRAMS,
   KNOWN_DRAINERS,
@@ -111,4 +111,4 @@ export {
   lookupProgramName,
   SPL_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
-} from "./constants.js";
+} from "./constants";

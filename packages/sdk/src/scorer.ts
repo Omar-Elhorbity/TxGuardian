@@ -1,4 +1,4 @@
-import type { RiskLevel, Severity, TxRiskFlag } from "./types.js";
+import type { RiskLevel, Severity, TxRiskFlag } from "./types";
 
 const SEVERITY_WEIGHT: Record<Severity, number> = {
   low: 10,

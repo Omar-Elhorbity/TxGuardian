@@ -1,5 +1,5 @@
-import type { TxRiskFlag } from "../types.js";
-import type { Rule } from "./index.js";
+import type { TxRiskFlag } from "../types";
+import type { Rule } from "./index";
 
 /**
  * SIMULATION_SPOOF — intent–outcome mismatch detector.

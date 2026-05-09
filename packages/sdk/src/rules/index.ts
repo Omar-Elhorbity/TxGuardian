@@ -3,14 +3,14 @@ import type {
   ParsedTransaction,
   SimulationDelta,
   TxRiskFlag,
-} from "../types.js";
-import type { DecodedTokenOp } from "../decode.js";
-import { detectKnownDrainer } from "./drainer.js";
-import { detectUnknownPrograms } from "./unknown.js";
-import { detectComplexity } from "./complexity.js";
-import { detectFullApproval } from "./approval.js";
-import { detectSpoofRisk } from "./spoof.js";
-import { detectUnusualFee } from "./fee.js";
+} from "../types";
+import type { DecodedTokenOp } from "../decode";
+import { detectKnownDrainer } from "./drainer";
+import { detectUnknownPrograms } from "./unknown";
+import { detectComplexity } from "./complexity";
+import { detectFullApproval } from "./approval";
+import { detectSpoofRisk } from "./spoof";
+import { detectUnusualFee } from "./fee";
 
 export interface RuleContext {
   parsed: ParsedTransaction;

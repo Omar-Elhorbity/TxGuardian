@@ -1,7 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { z } from "zod";
-import type { DecodedInstruction, RiskLevel, TxRiskFlag } from "./types.js";
+import type { DecodedInstruction, RiskLevel, TxRiskFlag } from "./types";
 
 /**
  * AI Explainer — TRANSLATOR ONLY. The LLM receives the deterministic flags

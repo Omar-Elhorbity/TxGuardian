@@ -1,5 +1,5 @@
 import type { Connection, VersionedTransaction } from "@solana/web3.js";
-import type { SimulationDelta } from "./types.js";
+import type { SimulationDelta } from "./types";
 
 /**
  * Wrap connection.simulateTransaction with safe defaults. We never need
