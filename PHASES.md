@@ -251,3 +251,67 @@ A running journal of how TxGuardian was built. Each phase ends with a commit and
 - No live "Edit JSON" for playground (not a v1 feature).
 
 **Next:** Phase 7 — final docs pass, README links audit, ensure `.env.example` matches what the code reads, final commit.
+
+---
+
+## Phase 7 — Final docs pass: README, SECURITY.md
+
+**Goal:** Hand off a buildable, documented project to the deploy machine.
+
+**Done:**
+- `SECURITY.md` — threat model + per-stage validation table + defense-in-depth around the LLM + server-only secret list + drainer blocklist policy + hackathon scope caveats. Captures every defensive rationale that's spread across the codebase in one place.
+- `README.md` — rewritten with:
+  - Concise pitch + architecture diagram
+  - Final risk-flag shipping table (5 active + UNUSUAL_FEE bonus + TOCTOU documented)
+  - Repo layout tree
+  - **Local setup** section with the exact 3-step quickstart (`pnpm install` → `cp .env.example apps/web/.env.local` → `pnpm dev`)
+  - **Required env** table making it crystal clear which keys are mandatory and why
+  - 90-second demo flow scripted for the pitch
+  - Cross-links to DESIGN, IA, SECURITY, PHASES
+- `.env.example` already documents `RPC_URL` and `ANTHROPIC_API_KEY` — verified to match what `lib/rpc.ts` and `packages/sdk/src/explain.ts` actually read.
+
+## What ships at MVP — final inventory
+
+**SDK (`packages/sdk`):**
+- `analyze(options)` entry point — fast/full mode dichotomy, failure isolation
+- Parser: legacy + v0 + ALT resolution + Token-2022 + 4096-byte cap
+- Decoder: SPL Token + Token-2022 + System + ComputeBudget + Memo (content stripped)
+- Simulate wrapper: 5s timeout, sigVerify:false, replaceRecentBlockhash:true
+- 5 active rule modules + 1 bonus + scorer
+- AI translator: Vercel AI SDK + Zod schema, Claude Haiku 4.5, in-memory cache
+
+**Web (`apps/web`):**
+- Home, Scan, Docs, About, Playground pages
+- `/api/analyze` POST + `/api/fixtures` GET
+- Component library: RiskBadge, FlagCard, ExplanationBox, RecommendationBar, TxInput, RiskSkeleton, SampleTxPicker, ResultView, Nav, Footer
+- Design system bridge (CSS variables → Tailwind utility classes)
+- Three deterministic demo fixtures (Safe / Caution / Danger)
+
+**Docs:**
+- DESIGN.md (16k) — design system
+- IA.md (17k) — information architecture
+- README.md — project overview + setup
+- SECURITY.md — threat model + defensive posture
+- PHASES.md — this file (build journal)
+
+## What's deferred to the deploy machine
+
+Per user instructions, no install/build/typecheck was run locally. The deploy machine should:
+
+```bash
+pnpm install                          # Hydrate workspace
+cp .env.example apps/web/.env.local   # Then fill in RPC_URL + ANTHROPIC_API_KEY
+pnpm typecheck                        # Verify TS across SDK + web (recursive)
+pnpm dev                              # Local dev server
+# OR
+pnpm build && pnpm start              # Production
+```
+
+Likely first-build issues to watch for:
+- If `geist` 1.3 has a peer-dep mismatch, switch to `next/font/google` `Geist` import.
+- If `@solana/web3.js` 1.95 + `bs58` 6 ESM interop trips the bundler, downgrade `bs58` to ^5.
+- If Vercel's serverless runtime complains about the `runtime: "nodejs"` declaration, it's already correct — `@solana/web3.js` requires Node primitives.
+
+## Project status
+
+**Build complete.** Repo is committed across 7 phases with one commit per phase. Ready to install + run.
