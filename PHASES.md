@@ -93,3 +93,37 @@ A running journal of how TxGuardian was built. Each phase ends with a commit and
 - No address from the parsed transaction is ever used as a key into a code-executing context.
 
 **Next:** Phase 3 — AI explainer + `analyze()` entry point.
+
+---
+
+## Phase 3 — AI Explainer + `analyze()` SDK entry point
+
+**Goal:** Wire the LLM as a strict prose translator over the deterministic engine, then expose a single `analyze()` function as the SDK's public API.
+
+**Done:**
+- `explain.ts` — Vercel AI SDK + Anthropic provider + Zod-locked schema:
+  - `ExplanationSchema = z.object({ headline: max 100, explanation: max 500, whatThisDoes: array(max 140 each, up to 6) })`. **No `recommendation` field on the LLM schema** — recommendation is enum-locked to deterministic riskLevel and never asked for from the model.
+  - System prompt is explicit about role: "translator, source of truth is the rule engine, do not invent risks, do not quote user-controlled text verbatim."
+  - User prompt fed only the deterministic flags + pre-decoded instruction summaries (already memo-stripped in Phase 2). No raw bytes, no addresses leaked into model context.
+  - `temperature: 0.2` for stability; default model `claude-haiku-4-5`, override via `options.model` or `TXGUARDIAN_MODEL` env.
+  - `explainCached()` wraps `explain()` with an in-memory cache keyed by `{riskLevel, score, sorted-flag-ids, ix-summaries, model}`. Bounded at 200 entries (FIFO eviction). Survives Vercel warm window; cold starts regenerate.
+- `index.ts` — `analyze(options)` orchestrates the full pipeline:
+  - Parser → decoder → (simulation if full mode) → rules → scorer → (LLM if full mode).
+  - `mode === "fast"`: skips simulation and LLM. Sub-200ms response on a cached parser.
+  - `mode === "full"`: runs simulation with 5s timeout and the cached LLM call.
+  - **Failure isolation:** simulation failures and LLM failures are caught and degrade to `simulation: undefined` / `explanation: ""`. The deterministic verdict (riskLevel, score, flags, recommendation) is always valid.
+  - Public type re-exports + utility re-exports (`parseTransaction`, `ParseError`, `decodeAll`, `runRules`, `scoreFlags`, `KNOWN_PROGRAMS`, `KNOWN_DRAINERS`, token program ID constants).
+
+**Architectural invariants now locked in code:**
+- The LLM cannot raise, lower, or invent flags — it has no path to `flags[]` mutation.
+- The LLM cannot influence `recommendation` — that field is set by `scoreFlags()` before `explain()` is called.
+- An LLM failure never produces a wrong verdict; it produces the same verdict with empty prose.
+
+**Security posture:**
+- LLM input is scrubbed of attacker-controlled strings (memo content, raw account labels) at decode time (Phase 2).
+- System prompt instructs the model not to quote raw text — defense in depth.
+- API key checked only at runtime (server-side), never bundled into client.
+
+**Status:** SDK is feature-complete for MVP. Ready to be consumed by the Next.js app.
+
+**Next:** Phase 4 — Next.js app shell with the design tokens from `DESIGN.md`.
