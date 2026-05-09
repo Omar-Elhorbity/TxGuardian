@@ -3,7 +3,7 @@ node_modules/
 .pnpm-store/
 
 # Build artifacts
-# dist/
+dist/
 build/
 .next/
 out/
@@ -41,7 +41,7 @@ test-ledger/
 *.so
 
 # Extension build output
-apps/extension/dist/
+# apps/extension/dist/
 
 # Cargo
 **/Cargo.lock.bak
