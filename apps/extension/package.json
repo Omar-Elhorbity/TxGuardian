@@ -1,0 +1,25 @@
+{
+  "name": "@txguardian/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TxGuardian browser extension — pre-sign verdict overlay for Solana wallets.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@txguardian/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.32",
+    "@types/chrome": "^0.0.287",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
