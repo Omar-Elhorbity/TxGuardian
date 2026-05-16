@@ -355,7 +355,7 @@ export async function POST(req: Request) {
             href="/scan"
             className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:text-accent-hover"
           >
-            Try it on the scanner
+            Try it in the engine demo
             <ArrowRight
               className="h-3.5 w-3.5"
               strokeWidth={2}

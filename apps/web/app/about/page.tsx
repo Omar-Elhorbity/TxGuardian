@@ -12,11 +12,13 @@ export default function AboutPage() {
           About TxGuardian
         </h1>
         <p className="mt-3 text-[15px] leading-[1.65] text-text-secondary">
-          A pre-sign safety layer for Solana. Four shipping surfaces today —
-          web scanner, browser extension, framework-agnostic SDK, and an
-          on-chain attestation registry — all sharing the same engine.
-          Deterministic rules decide what's risky; an AI translator makes
-          the decision legible to a non-developer in seconds.
+          A browser extension that intercepts every Solana signing request
+          and shows a safety verdict before your wallet&apos;s prompt
+          appears. The engine that powers it is also exposed as a public
+          demo and a TypeScript SDK, and it reads from an on-chain
+          attestation registry deployed on devnet. Deterministic rules
+          decide what&apos;s risky; an AI translator makes the verdict
+          legible to a non-developer in seconds.
         </p>
       </header>
 
@@ -52,24 +54,25 @@ export default function AboutPage() {
         </h2>
         <div className="panel mt-3 p-5">
           <pre className="overflow-x-auto font-mono text-[11.5px] leading-[1.7] text-text-secondary">
-{`Web scanner   ┐
-Extension     ┤── POST /api/analyze ── @txguardian/sdk
-Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                         ├─ Decoder    (instruction summaries; memo stripped)
-                                         ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                         ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                         ├─ Rules      (deterministic — source of truth) ←┘
-                                         ├─ Scorer     (severity → 0–100 → recommendation)
-                                         └─ Translator (Gemini 2.5 Flash — never decides risk)`}
+{`Extension          ─┐
+                    ├── HTTP /api/analyze ──── @txguardian/sdk  (the engine)
+Web demo (/scan)   ─┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
+                                               ├─ Decoder    (instruction summaries; memo stripped)
+                                               ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
+                                               ├─ Registry   (on-chain getProgramAccounts) ─────┐
+                                               ├─ Rules      (deterministic — source of truth) ←┘
+                                               ├─ Scorer     (severity → 0–100 → recommendation)
+                                               └─ Translator (Gemini 2.5 Flash — never decides risk)`}
           </pre>
         </div>
         <p className="mt-3 text-[13px] leading-[1.65] text-text-muted">
-          Three client surfaces share one engine. The deterministic engine is
-          the source of truth on risk; the LLM only renders the verdict into
+          Both client surfaces speak HTTP to the analyzer route so the LLM
+          key and RPC URL stay server-side. The deterministic engine is the
+          source of truth on risk; the LLM only renders the verdict into
           prose — it cannot raise, lower, or invent flags, and the
           recommendation is enum-locked to the deterministic level. The
-          on-chain registry feeds confirmed attestations into the drainer rule
-          alongside a hardcoded fallback list.
+          on-chain registry feeds confirmed attestations into the drainer
+          rule alongside a hardcoded fallback list.
         </p>
       </section>
 
@@ -113,10 +116,12 @@ Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT 
           Scope
         </h2>
         <p className="mt-3 text-[14px] leading-[1.7] text-text-primary">
-          Four surfaces share one engine: a public web scanner with
-          sign-and-send, a framework-agnostic TypeScript SDK, an Anchor
-          program live on devnet feeding the drainer rule, and a Chrome
-          extension that intercepts every signing request on every dApp.
+          The browser extension is the product. The other surfaces are how
+          you reach the same engine without installing it: a public web
+          demo at /scan for one-off analysis, a TypeScript SDK for
+          integrators that want pre-sign checks embedded in their own
+          wallet or dApp code, and the Anchor program on devnet that
+          supplies the on-chain drainer feed both of those consume.
         </p>
       </section>
 
@@ -165,10 +170,10 @@ Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT 
 
       <section className="mt-12 border-t border-border pt-6">
         <Link
-          href="/scan"
+          href="/extension"
           className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:text-accent-hover"
         >
-          Try the scanner
+          Install the extension
           <ArrowRight
             className="h-3.5 w-3.5"
             strokeWidth={2}

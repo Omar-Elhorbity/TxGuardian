@@ -127,9 +127,9 @@ export default function OG() {
             color: TEXT_MUTED,
           }}
         >
-          <span>Web scanner</span>
-          <span>·</span>
           <span>Browser extension</span>
+          <span>·</span>
+          <span>Engine demo</span>
           <span>·</span>
           <span>TypeScript SDK</span>
           <span>·</span>

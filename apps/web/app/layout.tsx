@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "TxGuardian — Pre-sign transaction safety for Solana",
     description:
-      "Deterministic risk rules, on-chain attestation registry, plain-English AI translation. Web scanner, browser extension, and TypeScript SDK.",
+      "Deterministic risk rules, on-chain attestation registry, plain-English AI translation. Browser extension, engine demo, and TypeScript SDK.",
     type: "website",
     siteName: "TxGuardian",
   },

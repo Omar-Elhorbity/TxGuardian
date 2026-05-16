@@ -40,7 +40,7 @@ export default function ExtensionPage() {
             Download v{EXTENSION_VERSION}
           </a>
           <Link href="/demo-sign" className="btn btn-secondary">
-            Test the interception
+            See it in action
           </Link>
         </div>
         <p className="mt-3 text-[12px] text-text-muted">
@@ -61,19 +61,19 @@ export default function ExtensionPage() {
           <FeatureCard
             icon={<Eye className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
             title="Intercept"
-            body="Patches the signing API on every page at document_start, before any dApp script runs. Covers direct Phantom calls and the Wallet Standard protocol used by wallet-adapter."
+            body="Catches every signing request the moment a Solana dApp asks for one — before Phantom, Solflare, Backpack, or any other wallet shows you its prompt."
           />
           <FeatureCard
             icon={
               <ShieldCheck className="h-5 w-5" strokeWidth={1.75} aria-hidden />
             }
             title="Verify"
-            body="Sends the transaction to TxGuardian for analysis — same engine as the scanner. Runs the rule engine, checks the on-chain registry, and translates to plain English."
+            body="Inspects what the transaction actually authorizes: drainer programs, unlimited token approvals, suspicious destinations. Cross-checks against a live on-chain registry of known-bad programs."
           />
           <FeatureCard
             icon={<ZapOff className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
             title="Decide"
-            body="Modal appears with the verdict. Approve passes through to your wallet's normal signing prompt. Reject throws code 4001 — the dApp sees a standard cancellation."
+            body="Shows you the verdict in plain English. Approve and the request flows through to your wallet normally. Reject and the dApp sees a standard cancellation — same as if you'd hit cancel yourself."
           />
         </div>
       </section>
@@ -196,7 +196,7 @@ export default function ExtensionPage() {
               <CoverRow label="Any dApp on a web page using Phantom" yes />
               <CoverRow label="Any dApp using a Wallet Standard wallet (Solflare, Backpack, Glow…)" yes />
               <CoverRow label="Iframes inside web dApps" yes />
-              <CoverRow label="signAndSendTransaction (Phantom shorthand)" yes />
+              <CoverRow label="One-click sign-and-send from a dApp (Phantom shorthand)" yes />
               <CoverRow label="Phantom's built-in Send / Swap / Stake" no />
               <CoverRow label="Mobile Phantom / in-app browsers" no />
             </tbody>
