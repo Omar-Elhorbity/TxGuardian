@@ -1,0 +1,212 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy — TxGuardian",
+  description:
+    "What the TxGuardian browser extension and web scanner send, store, and don't.",
+};
+
+const LAST_UPDATED = "May 2026";
+
+export default function PrivacyPage() {
+  return (
+    <div className="mx-auto max-w-[780px] px-6 py-10 md:py-14">
+      <header>
+        <h1 className="text-[32px] font-semibold tracking-tight">Privacy</h1>
+        <p className="mt-2 text-[12px] uppercase tracking-[0.12em] text-text-muted">
+          Last updated {LAST_UPDATED}
+        </p>
+        <p className="mt-4 text-[15px] leading-[1.65] text-text-secondary">
+          TxGuardian is a transaction-safety tool. It analyzes Solana
+          transactions before you sign them. This page describes exactly what
+          the browser extension and the web scanner send, store, and don&apos;t —
+          in plain English.
+        </p>
+      </header>
+
+      <section className="mt-12">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          What gets sent to the analyzer
+        </h2>
+        <div className="mt-3 space-y-3 text-[14px] leading-[1.7] text-text-secondary">
+          <p>
+            When you sign a Solana transaction (web scanner) or a dApp
+            requests a signature (extension), TxGuardian sends the
+            <strong className="text-text-primary"> serialized
+            transaction</strong> as a base64 string to the analyzer endpoint
+            (<code className="font-mono text-[12px] text-text-primary">
+              /api/analyze
+            </code>
+            ).
+          </p>
+          <p>
+            The transaction contains: the instructions, the program IDs they
+            target, the accounts they touch, and a fee payer. It does{" "}
+            <strong className="text-text-primary">not</strong> contain your
+            private key — Solana transactions are signed locally by your
+            wallet after the analysis returns.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          What does NOT get sent
+        </h2>
+        <ul className="mt-3 space-y-2 text-[14px] leading-[1.7] text-text-secondary">
+          <li>
+            <strong className="text-text-primary">No private keys.</strong>{" "}
+            TxGuardian has no signing surface and no access to wallet
+            internals. Signing always happens inside your wallet.
+          </li>
+          <li>
+            <strong className="text-text-primary">No browsing history.</strong>{" "}
+            The extension only activates on a signing request — it does not
+            read page content, log URLs, or track navigation.
+          </li>
+          <li>
+            <strong className="text-text-primary">
+              No personally-identifying data.
+            </strong>{" "}
+            No name, email, or account ID is sent. Your wallet&apos;s public
+            key is part of the transaction payload because it has to be — it
+            identifies the fee payer on-chain — but it is not separately
+            collected, stored, or correlated.
+          </li>
+          <li>
+            <strong className="text-text-primary">No analytics or telemetry.</strong>{" "}
+            No third-party trackers, no analytics SDK, no session
+            replays. The analyzer endpoint logs only operational metrics
+            (HTTP status, latency) on the hosting provider.
+          </li>
+        </ul>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          Storage
+        </h2>
+        <div className="mt-3 space-y-3 text-[14px] leading-[1.7] text-text-secondary">
+          <p>
+            The browser extension uses{" "}
+            <code className="font-mono text-[12px] text-text-primary">
+              chrome.storage.local
+            </code>{" "}
+            to remember one thing: the analyzer endpoint URL, if you have
+            overridden it from the popup. Nothing else is persisted on your
+            device.
+          </p>
+          <p>
+            The analyzer endpoint applies a short-lived in-memory cache on
+            verdicts (keyed by the deterministic transaction hash) to avoid
+            re-running identical analyses. Cache entries are not shared,
+            aggregated, or sold.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          Third parties
+        </h2>
+        <div className="mt-3 space-y-3 text-[14px] leading-[1.7] text-text-secondary">
+          <p>
+            The analyzer makes outbound calls to:
+          </p>
+          <ul className="space-y-2">
+            <li>
+              A <strong className="text-text-primary">Solana RPC provider</strong>{" "}
+              (Helius / QuickNode / official endpoints) to fetch account
+              metadata and simulate the transaction. The transaction payload
+              is sent to the RPC.
+            </li>
+            <li>
+              <strong className="text-text-primary">Google Generative Language API</strong>{" "}
+              (Gemini 2.5 Flash) for the plain-English explanation. Only
+              pre-decoded instruction summaries are sent — never raw
+              transaction bytes, never account labels controlled by an
+              attacker. Memo content is stripped before this step.
+            </li>
+          </ul>
+          <p>
+            If you self-host the analyzer (you can — the source is public),
+            you control which RPC and which LLM provider receive the
+            payload. The extension popup lets you point at your own
+            instance.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          Permissions used by the extension
+        </h2>
+        <ul className="mt-3 space-y-2 text-[14px] leading-[1.7] text-text-secondary">
+          <li>
+            <code className="font-mono text-[12px] text-text-primary">
+              host_permissions: &lt;all_urls&gt;
+            </code>{" "}
+            — required because the extension must inject into every site that
+            could host a Solana dApp to intercept the wallet&apos;s signing
+            request. The injected script only activates when a wallet asks
+            to sign; it does not read or modify page content otherwise.
+          </li>
+          <li>
+            <code className="font-mono text-[12px] text-text-primary">
+              storage
+            </code>{" "}
+            — used to persist the user-configured analyzer endpoint. No
+            other data is stored.
+          </li>
+        </ul>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          Open source
+        </h2>
+        <p className="mt-3 text-[14px] leading-[1.7] text-text-secondary">
+          Every line of TxGuardian — extension, scanner, SDK, on-chain
+          program — is open source under the MIT license. The privacy claims
+          on this page are auditable. Source at{" "}
+          <a
+            href="https://github.com/Omar-Elhorbity/TxGuardian"
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent hover:text-accent-hover"
+          >
+            github.com/Omar-Elhorbity/TxGuardian
+          </a>
+          .
+        </p>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          Contact
+        </h2>
+        <p className="mt-3 text-[14px] leading-[1.7] text-text-secondary">
+          Privacy questions or security reports: open a private security
+          advisory on the GitHub repo, or email{" "}
+          <a
+            href="mailto:omarhusseinelhorbity@gmail.com"
+            className="text-accent hover:text-accent-hover"
+          >
+            omarhusseinelhorbity@gmail.com
+          </a>
+          .
+        </p>
+      </section>
+
+      <section className="mt-12 border-t border-border pt-6">
+        <Link
+          href="/extension"
+          className="text-[13px] text-accent hover:text-accent-hover"
+        >
+          ← Back to extension install guide
+        </Link>
+      </section>
+    </div>
+  );
+}

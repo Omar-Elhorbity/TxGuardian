@@ -275,8 +275,8 @@ if (result.riskLevel === "danger") {
 }`}
               </pre>
               <p className="mt-3 text-[12px] text-text-muted">
-                Workspace package today; npm publish on the roadmap. Setup
-                instructions in the docs.
+                Framework-agnostic. Works in any Node or browser runtime that
+                can reach a Solana RPC. Setup instructions in the docs.
               </p>
               <Link
                 href="/docs"

@@ -19,8 +19,13 @@ export function Footer() {
             </Link>
           </li>
           <li>
+            <Link href="/privacy" className="hover:text-text-primary">
+              Privacy
+            </Link>
+          </li>
+          <li>
             <a
-              href="https://github.com"
+              href="https://github.com/Omar-Elhorbity/TxGuardian"
               target="_blank"
               rel="noreferrer"
               className="hover:text-text-primary"

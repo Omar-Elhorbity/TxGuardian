@@ -18,16 +18,26 @@ import pkg from "./package.json";
  *
  *   - src/background.ts: service worker, calls /api/analyze.
  *
+ *   - src/popup.html + src/popup.ts: action popup. Lets the user
+ *     override the analyzer endpoint and run a connectivity check.
+ *
  * This avoids the @crxjs/vite-plugin world: "MAIN" content_script bug
  * where the auto-generated loader's dynamic import resolves against the
  * dApp's URL (not the extension's), 404s, and silently fails.
  */
 export default defineManifest({
   manifest_version: 3,
-  name: "TxGuardian",
+  name: "TxGuardian — Solana transaction safety",
   version: pkg.version,
   description:
-    "Pre-sign safety verdict for Solana transactions. Inspects what your wallet is about to sign.",
+    "Pre-sign safety verdict for every Solana transaction your wallet is about to sign. Deterministic checks, plain-English explanation.",
+  homepage_url: "https://txguardian.vercel.app",
+  icons: {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png",
+  },
   permissions: ["storage"],
   host_permissions: [
     "http://localhost:3000/*",
@@ -55,5 +65,12 @@ export default defineManifest({
   ],
   action: {
     default_title: "TxGuardian",
+    default_popup: "src/popup.html",
+    default_icon: {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png",
+    },
   },
 });

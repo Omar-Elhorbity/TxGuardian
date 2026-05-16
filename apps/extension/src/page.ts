@@ -569,6 +569,9 @@ function renderUnavailable(origin: string): string {
         <p class="explanation">
           The wallet's own confirmation will still appear next. Proceed only if you trust this dApp and the transaction it's asking you to sign.
         </p>
+        <p class="explanation" style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
+          Tip: open the TxGuardian extension icon in your toolbar to verify or override the analyzer endpoint.
+        </p>
       </div>
       <footer>
         <button class="btn primary" data-action="reject" data-action-also="primary">Reject</button>
@@ -1187,3 +1190,8 @@ button:focus-visible {
 }
 .card::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.14); }
 `;
+
+// Force this file to be treated as a module so `declare global` is valid.
+// The build still emits a single self-contained file; nothing is exported
+// from it at runtime.
+export {};
