@@ -8,7 +8,14 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { Loader2, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import {
+  Loader2,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  FlaskConical,
+} from "lucide-react";
 
 /**
  * Minimal extension-test page.
@@ -97,15 +104,37 @@ export default function DemoSignPage() {
           Sign a test transaction
         </h1>
         <p className="mt-3 text-[14px] leading-[1.65] text-text-secondary">
-          One-click signing test. Builds a real Solana zero-lamport
-          self-transfer and calls{" "}
+          Verifies the{" "}
+          <Link
+            href="/extension"
+            className="text-accent hover:text-accent-hover"
+          >
+            installed extension
+          </Link>{" "}
+          is intercepting signing requests on this page. Builds a real Solana
+          zero-lamport self-transfer and calls{" "}
           <code className="font-mono text-[12px] text-text-primary">
             wallet.signTransaction
           </code>{" "}
-          — the same path the TxGuardian browser extension patches. The
-          transaction is signed locally and{" "}
-          <strong className="text-text-primary">never broadcast</strong>. Use
-          this to verify the extension intercepts third-party signing flows.
+          — the same path the extension patches. The transaction is signed
+          locally and{" "}
+          <strong className="text-text-primary">never broadcast</strong>.
+        </p>
+        <p className="mt-3 rounded-md border border-border bg-surface-1 px-3 py-2 text-[12px] leading-[1.55] text-text-muted">
+          <strong className="text-text-secondary">Not what you want?</strong>{" "}
+          To try the engine on any transaction (no install needed), use the{" "}
+          <Link
+            href="/scan"
+            className="inline-flex items-center gap-1 text-accent hover:text-accent-hover"
+          >
+            <FlaskConical
+              className="h-3 w-3"
+              strokeWidth={2}
+              aria-hidden
+            />
+            engine demo
+          </Link>
+          .
         </p>
       </header>
 
