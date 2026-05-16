@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TxRiskResult } from "@txguardian/sdk";
+import Link from "next/link";
 import { SampleTxPicker } from "@/components/SampleTxPicker";
 import { RiskBadge } from "@/components/RiskBadge";
 import { ExplanationBox } from "@/components/ExplanationBox";
-import { Loader2 } from "lucide-react";
+import { Code2, Loader2 } from "lucide-react";
 
 type SampleType = "safe" | "caution" | "danger";
 
@@ -84,16 +85,41 @@ export default function PlaygroundPage() {
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-10 md:py-14">
-      <header className="max-w-[640px]">
+      <header className="max-w-[680px]">
+        <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface-1 px-3 py-1 text-[12px] text-text-secondary">
+          <Code2
+            className="h-3 w-3 text-accent"
+            strokeWidth={2}
+            aria-hidden
+          />
+          For developers integrating the SDK
+        </p>
         <h1 className="text-[28px] font-semibold tracking-tight md:text-[32px]">
-          Playground
+          SDK playground
         </h1>
         <p className="mt-2 text-[14px] leading-[1.65] text-text-secondary">
-          Pick a sample, see the structured{" "}
+          Live <code className="font-mono text-[12px] text-text-primary">analyze()</code>{" "}
+          calls against each sample, with the raw{" "}
           <code className="font-mono text-[12px] text-text-primary">
             TxRiskResult
           </code>{" "}
-          the SDK would return your dApp.
+          shown on the right. Use this to size fields, check which keys are
+          populated in each mode, and preview the shape before you write
+          parser code in your own integration.
+        </p>
+        <p className="mt-2 text-[12px] text-text-muted">
+          Want the rendered UI view instead?{" "}
+          <Link
+            href="/scan"
+            className="text-accent hover:text-accent-hover"
+          >
+            Open the engine demo
+          </Link>
+          . Want the type definitions?{" "}
+          <Link href="/docs" className="text-accent hover:text-accent-hover">
+            Read the SDK docs
+          </Link>
+          .
         </p>
       </header>
 

@@ -191,6 +191,20 @@ export default function ScanPage() {
           verdict, flags, and plain-English explanation. Optionally connect a
           wallet to sign-and-send a sample on devnet.
         </p>
+        <p className="mt-2 text-[12px] leading-[1.6] text-text-muted">
+          Integrating the SDK and want to see raw{" "}
+          <code className="font-mono text-[11px] text-text-secondary">
+            TxRiskResult
+          </code>{" "}
+          JSON instead?{" "}
+          <Link
+            href="/playground"
+            className="text-accent hover:text-accent-hover"
+          >
+            Open the SDK playground
+          </Link>
+          .
+        </p>
       </header>
 
       <div className="space-y-5">
