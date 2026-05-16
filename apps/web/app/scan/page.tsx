@@ -9,7 +9,13 @@ import { SampleTxPicker } from "@/components/SampleTxPicker";
 import { RiskSkeleton } from "@/components/RiskSkeleton";
 import { ResultView } from "@/components/ResultView";
 import { RecommendationBar } from "@/components/RecommendationBar";
-import { AlertCircle, ArrowRight, FlaskConical } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  FlaskConical,
+  Puzzle,
+  MousePointerClick,
+} from "lucide-react";
 import { signAndSend, checkSignability } from "@/lib/sign-and-send";
 
 interface Provenance {
@@ -256,27 +262,74 @@ export default function ScanPage() {
         />
       )}
 
-      {/* Where you actually want this in production */}
-      <section className="mt-16 panel-strong p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-[520px]">
-            <h2 className="text-[15px] font-semibold tracking-tight">
-              For real use, install the extension
-            </h2>
-            <p className="mt-2 text-[13px] leading-[1.65] text-text-secondary">
-              You don&apos;t have base64 transactions sitting around — your
-              wallet does. The TxGuardian extension intercepts every signing
-              request on every dApp and runs this same engine before your
-              wallet&apos;s prompt appears.
-            </p>
+      {/* Two-card "what's this vs that" — disambiguates /scan (engine demo)
+          from /demo-sign (extension verification). Each card explicitly names
+          what it's for so users land on the right surface. */}
+      <section
+        className="mt-16 grid gap-3 md:grid-cols-2 md:gap-4"
+        aria-label="Other surfaces"
+      >
+        <div className="panel-strong p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-accent-soft p-2 text-accent">
+              <Puzzle className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[14px] font-semibold tracking-tight">
+                For real use, install the extension
+              </h2>
+              <p className="mt-1.5 text-[13px] leading-[1.6] text-text-secondary">
+                You don&apos;t have base64 transactions sitting around — your
+                wallet does. The extension intercepts every signing request
+                on every dApp and runs this same engine before your
+                wallet&apos;s prompt.
+              </p>
+              <Link
+                href="/extension"
+                className="mt-3 inline-flex items-center gap-1 text-[13px] text-accent hover:text-accent-hover"
+              >
+                Install the extension
+                <ArrowRight
+                  className="h-3.5 w-3.5"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/extension"
-            className="btn btn-primary"
-          >
-            Install the extension
-            <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </Link>
+        </div>
+
+        <div className="panel p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-surface-2 p-2 text-text-secondary">
+              <MousePointerClick
+                className="h-4 w-4"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[14px] font-semibold tracking-tight">
+                Already installed it? Test the interception
+              </h2>
+              <p className="mt-1.5 text-[13px] leading-[1.6] text-text-secondary">
+                Confirm the extension is patching your wallet correctly.
+                One-click signing flow on devnet — the verdict modal should
+                appear before your wallet&apos;s prompt.
+              </p>
+              <Link
+                href="/demo-sign"
+                className="mt-3 inline-flex items-center gap-1 text-[13px] text-accent hover:text-accent-hover"
+              >
+                Go to /demo-sign
+                <ArrowRight
+                  className="h-3.5 w-3.5"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </div>
