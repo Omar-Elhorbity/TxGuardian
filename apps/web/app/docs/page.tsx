@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
+
+const SECTIONS = [
+  { href: "#quickstart", label: "Quickstart" },
+  { href: "#api-reference", label: "API reference" },
+  { href: "#risk-flags", label: "Risk flags" },
+  { href: "#on-chain-registry", label: "On-chain registry" },
+  { href: "#integration", label: "Integration patterns" },
+];
 
 export default function DocsPage() {
   return (
@@ -9,36 +17,44 @@ export default function DocsPage() {
         className="mb-8 md:mb-0 md:sticky md:top-20 md:self-start"
         aria-label="Docs navigation"
       >
-        <nav className="text-[13px]">
+        {/* Mobile: collapsible "On this page". Closed by default so the page
+            heading lands first; native <details> keeps it JS-free + accessible. */}
+        <details className="group rounded-md border border-border bg-surface-1 md:hidden">
+          <summary className="flex cursor-pointer select-none list-none items-center justify-between px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.12em] text-text-muted [&::-webkit-details-marker]:hidden">
+            <span>On this page</span>
+            <ChevronDown
+              className="h-4 w-4 transition-transform group-open:rotate-180"
+              strokeWidth={2}
+              aria-hidden
+            />
+          </summary>
+          <ul className="space-y-1 border-t border-border px-4 py-3 text-[13px] text-text-secondary">
+            {SECTIONS.map((s) => (
+              <li key={s.href}>
+                <a
+                  href={s.href}
+                  className="block py-1 hover:text-text-primary"
+                >
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
+
+        {/* Desktop: sticky sidebar */}
+        <nav className="hidden text-[13px] md:block">
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-text-muted">
             Docs
           </div>
           <ul className="space-y-1.5 text-text-secondary">
-            <li>
-              <a href="#quickstart" className="hover:text-text-primary">
-                Quickstart
-              </a>
-            </li>
-            <li>
-              <a href="#api-reference" className="hover:text-text-primary">
-                API reference
-              </a>
-            </li>
-            <li>
-              <a href="#risk-flags" className="hover:text-text-primary">
-                Risk flags
-              </a>
-            </li>
-            <li>
-              <a href="#on-chain-registry" className="hover:text-text-primary">
-                On-chain registry
-              </a>
-            </li>
-            <li>
-              <a href="#integration" className="hover:text-text-primary">
-                Integration patterns
-              </a>
-            </li>
+            {SECTIONS.map((s) => (
+              <li key={s.href}>
+                <a href={s.href} className="hover:text-text-primary">
+                  {s.label}
+                </a>
+              </li>
+            ))}
           </ul>
         </nav>
       </aside>
