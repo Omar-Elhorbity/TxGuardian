@@ -158,7 +158,7 @@ export default function ExtensionPage() {
                   href="/demo-sign"
                   className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent hover:text-accent-hover"
                 >
-                  Open /demo-sign — one-click signing test
+                  Run the signing test
                   <ArrowRight
                     className="h-3.5 w-3.5"
                     strokeWidth={2}
