@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy — TxGuardian",
   description:
-    "What the TxGuardian browser extension and web scanner send, store, and don't.",
+    "What the TxGuardian browser extension and engine demo send, store, and don't.",
 };
 
 const LAST_UPDATED = "May 2026";
@@ -19,9 +19,9 @@ export default function PrivacyPage() {
         </p>
         <p className="mt-4 text-[15px] leading-[1.65] text-text-secondary">
           TxGuardian is a transaction-safety tool. It analyzes Solana
-          transactions before you sign them. This page describes exactly what
-          the browser extension and the web scanner send, store, and don&apos;t —
-          in plain English.
+          transactions before you sign them. This page describes exactly
+          what the browser extension and the public engine demo send,
+          store, and don&apos;t — in plain English.
         </p>
       </header>
 
@@ -31,8 +31,8 @@ export default function PrivacyPage() {
         </h2>
         <div className="mt-3 space-y-3 text-[14px] leading-[1.7] text-text-secondary">
           <p>
-            When you sign a Solana transaction (web scanner) or a dApp
-            requests a signature (extension), TxGuardian sends the
+            When a dApp asks you to sign a transaction (extension) or you
+            submit one to the engine demo, TxGuardian sends the
             <strong className="text-text-primary"> serialized
             transaction</strong> as a base64 string to the analyzer endpoint
             (<code className="font-mono text-[12px] text-text-primary">
@@ -167,7 +167,7 @@ export default function PrivacyPage() {
           Open source
         </h2>
         <p className="mt-3 text-[14px] leading-[1.7] text-text-secondary">
-          Every line of TxGuardian — extension, scanner, SDK, on-chain
+          Every line of TxGuardian — extension, web demo, SDK, on-chain
           program — is open source under the MIT license. The privacy claims
           on this page are auditable. Source at{" "}
           <a

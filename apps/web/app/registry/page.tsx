@@ -213,8 +213,8 @@ function EmptyState({ registryInitialized }: { registryInitialized: boolean }) {
           <>
             <span className="font-medium text-text-primary">No entries yet.</span>{" "}
             The registry is initialized but no programs have been flagged.
-            Submit one with the snippet below — the scanner will pick it up
-            within 60 seconds (cache TTL).
+            Submit one with the snippet below — TxGuardian&apos;s verdicts
+            will start including it within 60 seconds (cache TTL).
           </>
         ) : (
           <>
