@@ -121,7 +121,7 @@ export default async function RegistryPage() {
           The submit instruction is permissionless — anyone can flag a program
           for review by paying rent for the attestation account (~0.002 SOL on
           devnet). The admin keypair confirms or revokes; only confirmed entries
-          show up in scanner output.
+          flow into TxGuardian&apos;s verdicts (scanner, extension, and SDK).
         </p>
         <pre className="mt-3 overflow-x-auto rounded-md border border-border bg-surface-2 p-3 font-mono text-[12px] leading-[1.55] text-text-primary">
 {`// Server-side, with @coral-xyz/anchor and the program IDL
