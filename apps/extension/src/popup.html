@@ -178,12 +178,19 @@
       .test-result.err {
         color: var(--bad);
       }
+      .version {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
     </style>
   </head>
   <body>
     <div class="header">
       <span class="dot" id="status-dot" aria-hidden="true"></span>
       <h1>TxGuardian</h1>
+      <span class="version" id="version">v—</span>
       <span class="status" id="status-text">checking…</span>
     </div>
 

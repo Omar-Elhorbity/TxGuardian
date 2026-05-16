@@ -126,14 +126,21 @@ pnpm seed-registry         # populates the live registry with demo entries
 
 ## Install the extension
 
-The extension is Manifest V3 (Chrome / Brave / Arc / Edge). It defaults to the hosted analyzer at `tx-guardian-web.vercel.app`; the popup lets you point at any other deployment (including localhost for development).
+Manifest V3 (Chrome / Brave / Arc / Edge). Defaults to the hosted analyzer at `tx-guardian-web.vercel.app` — zero configuration.
 
-```bash
-pnpm --filter @txguardian/extension build
-# Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
-```
+1. Download [`txguardian-extension.zip`](https://tx-guardian-web.vercel.app/txguardian-extension.zip) and extract it
+2. `chrome://extensions` → toggle **Developer mode**
+3. Click **Load unpacked** → select the extracted folder
 
 Walkthrough with screenshots at [`/extension`](https://tx-guardian-web.vercel.app/extension). Privacy details at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
+
+**Build from source** (for development or auditing):
+
+```bash
+pnpm --filter @txguardian/extension package
+# → produces apps/extension/dist/ + apps/web/public/txguardian-extension.zip
+# Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
+```
 
 ### Required env
 

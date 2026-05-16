@@ -7,6 +7,10 @@ import {
   ZapOff,
   ExternalLink,
 } from "lucide-react";
+import pkg from "../../../extension/package.json";
+
+const EXTENSION_VERSION = pkg.version;
+const DOWNLOAD_HREF = "/txguardian-extension.zip";
 
 export default function ExtensionPage() {
   return (
@@ -23,18 +27,26 @@ export default function ExtensionPage() {
         <p className="mt-5 max-w-[600px] text-[15px] leading-[1.65] text-text-secondary">
           Sits between your wallet and any Solana dApp. Every signing request
           is intercepted, analyzed, and surfaced as a verdict overlay before
-          your wallet's own prompt appears. You decide. The wallet still has
-          the final say.
+          your wallet&apos;s own prompt appears. You decide. The wallet still
+          has the final say.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
-          <a href="#install" className="btn btn-primary">
+          <a
+            href={DOWNLOAD_HREF}
+            download
+            className="btn btn-primary"
+          >
             <Download className="h-4 w-4" strokeWidth={2} aria-hidden />
-            Install
+            Download v{EXTENSION_VERSION}
           </a>
           <Link href="/demo-sign" className="btn btn-secondary">
             Test the interception
           </Link>
         </div>
+        <p className="mt-3 text-[12px] text-text-muted">
+          ZIP, ~50 KB. Pre-built, points at the live analyzer by default —
+          no setup needed.
+        </p>
       </section>
 
       {/* What it does */}
@@ -72,36 +84,41 @@ export default function ExtensionPage() {
           id="install-heading"
           className="mb-3 text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted"
         >
-          Install (unpacked)
+          Install in 3 steps
         </h2>
         <p className="text-[14px] leading-[1.65] text-text-secondary">
-          Not on the Chrome Web Store yet — load it unpacked from the
-          monorepo. Takes about a minute.
+          Manifest V3 — works in Chrome, Brave, Arc, and Edge. Chrome Web
+          Store listing in progress; load unpacked in the meantime.
         </p>
 
         <ol className="mt-5 space-y-5">
           <Step
             n={1}
-            title="Build the extension"
+            title="Download and extract"
             body={
               <>
-                <CodeBlock>
-{`git clone https://github.com/Omar-Elhorbity/TxGuardian
-cd TxGuardian
-pnpm install
-pnpm --filter @txguardian/extension build
-# → outputs apps/extension/dist/`}
-                </CodeBlock>
-                <p className="mt-3 text-[12px] text-text-muted">
-                  The dist folder is tracked in git, so a fresh clone has it
-                  already — but rebuilding ensures you're on the latest.
+                <p className="text-[13px] leading-[1.65] text-text-secondary">
+                  Grab the zip and unzip it anywhere — the extracted folder
+                  is what you&apos;ll point Chrome at in the next step.
                 </p>
+                <a
+                  href={DOWNLOAD_HREF}
+                  download
+                  className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent hover:text-accent-hover"
+                >
+                  <Download
+                    className="h-3.5 w-3.5"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  txguardian-extension.zip · v{EXTENSION_VERSION}
+                </a>
               </>
             }
           />
           <Step
             n={2}
-            title="Open the extensions page"
+            title="Open the extensions page and enable Developer mode"
             body={
               <p className="text-[13px] leading-[1.65] text-text-secondary">
                 Visit{" "}
@@ -116,7 +133,11 @@ pnpm --filter @txguardian/extension build
                 <code className="font-mono text-[12px] text-text-primary">
                   arc://extensions
                 </code>
-                , etc.). Toggle{" "}
+                ,{" "}
+                <code className="font-mono text-[12px] text-text-primary">
+                  edge://extensions
+                </code>
+                ). Toggle{" "}
                 <strong className="text-text-primary">Developer mode</strong>{" "}
                 in the top-right.
               </p>
@@ -124,33 +145,14 @@ pnpm --filter @txguardian/extension build
           />
           <Step
             n={3}
-            title="Load unpacked"
-            body={
-              <p className="text-[13px] leading-[1.65] text-text-secondary">
-                Click{" "}
-                <strong className="text-text-primary">Load unpacked</strong>{" "}
-                and select{" "}
-                <code className="font-mono text-[12px] text-text-primary">
-                  apps/extension/dist
-                </code>
-                . TxGuardian appears in your extensions list, active on every
-                page.
-              </p>
-            }
-          />
-          <Step
-            n={4}
-            title="Verify it's working"
+            title="Load unpacked, then test it"
             body={
               <>
                 <p className="text-[13px] leading-[1.65] text-text-secondary">
-                  Open any Solana dApp, then DevTools → Console. Filter for{" "}
-                  <code className="font-mono text-[12px] text-text-primary">
-                    TxGuardian
-                  </code>
-                  . You should see boot logs from both the page-context script
-                  and the content-script bridge. Or use the dedicated test
-                  surface:
+                  Click{" "}
+                  <strong className="text-text-primary">Load unpacked</strong>{" "}
+                  and select the folder you extracted in step 1. TxGuardian
+                  appears in your extensions list, active on every page.
                 </p>
                 <Link
                   href="/demo-sign"
@@ -167,32 +169,10 @@ pnpm --filter @txguardian/extension build
             }
           />
         </ol>
-      </section>
-
-      {/* Configuration */}
-      <section className="mt-16" aria-labelledby="config-heading">
-        <h2
-          id="config-heading"
-          className="mb-3 text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted"
-        >
-          Configure the analyzer endpoint
-        </h2>
-        <p className="text-[14px] leading-[1.65] text-text-secondary">
-          The extension calls{" "}
-          <code className="font-mono text-[12px] text-text-primary">
-            http://localhost:3000/api/analyze
-          </code>{" "}
-          by default — change it to your deployed URL when you ship.
-        </p>
-        <CodeBlock>
-{`// apps/extension/src/background.ts
-const ANALYZE_ENDPOINT = "https://your-deployment.vercel.app/api/analyze";
-
-// apps/extension/manifest.config.ts — add the host:
-host_permissions: ["https://your-deployment.vercel.app/*", ...]`}
-        </CodeBlock>
-        <p className="mt-3 text-[12px] text-text-muted">
-          Then rebuild and click reload on the extension card.
+        <p className="mt-6 text-[12px] leading-[1.65] text-text-muted">
+          The extension defaults to the analyzer running on this site —
+          zero configuration. Self-hosters can override the endpoint from
+          the toolbar popup.
         </p>
       </section>
 
@@ -306,6 +286,36 @@ host_permissions: ["https://your-deployment.vercel.app/*", ...]`}
           <code className="font-mono text-[11px]">apps/extension</code>. ~30 KB
           minified, no React, no framework deps. Vanilla TypeScript +
           @crxjs/vite-plugin.
+        </p>
+      </section>
+
+      {/* Build from source (developers) */}
+      <section className="mt-16" aria-labelledby="dev-heading">
+        <h2
+          id="dev-heading"
+          className="mb-3 text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted"
+        >
+          Build from source
+        </h2>
+        <p className="text-[13px] leading-[1.65] text-text-secondary">
+          For development, custom analyzer endpoints, or auditing the build:
+        </p>
+        <CodeBlock>
+{`git clone https://github.com/Omar-Elhorbity/TxGuardian
+cd TxGuardian
+pnpm install
+pnpm --filter @txguardian/extension package
+# → produces apps/extension/dist/ and apps/web/public/txguardian-extension.zip`}
+        </CodeBlock>
+        <p className="mt-3 text-[12px] text-text-muted">
+          Then load{" "}
+          <code className="font-mono text-[11px]">apps/extension/dist</code>{" "}
+          unpacked. Endpoint can be overridden from the toolbar popup, or
+          edit{" "}
+          <code className="font-mono text-[11px]">
+            apps/extension/src/config.ts
+          </code>{" "}
+          and rebuild.
         </p>
       </section>
 
