@@ -24,6 +24,7 @@ const $ = <T extends HTMLElement>(id: string): T => {
 
 const dot = $<HTMLSpanElement>("status-dot");
 const statusText = $<HTMLSpanElement>("status-text");
+const versionEl = $<HTMLSpanElement>("version");
 const input = $<HTMLInputElement>("endpoint");
 const saveBtn = $<HTMLButtonElement>("save");
 const resetBtn = $<HTMLButtonElement>("reset");
@@ -34,6 +35,10 @@ const linkPrivacy = $<HTMLAnchorElement>("link-privacy");
 
 linkExtension.href = `${HOSTED_SITE_URL}/extension`;
 linkPrivacy.href = `${HOSTED_SITE_URL}/privacy`;
+
+// Surface the installed version so users can compare against the site's
+// current version and tell when their unpacked install has drifted.
+versionEl.textContent = `v${chrome.runtime.getManifest().version}`;
 
 void init();
 
