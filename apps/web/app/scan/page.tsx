@@ -323,7 +323,7 @@ export default function ScanPage() {
                 href="/demo-sign"
                 className="mt-3 inline-flex items-center gap-1 text-[13px] text-accent hover:text-accent-hover"
               >
-                Go to /demo-sign
+                Run the signing test
                 <ArrowRight
                   className="h-3.5 w-3.5"
                   strokeWidth={2}
