@@ -26,11 +26,19 @@ export const metadata: Metadata = {
   description:
     "Inspect any Solana transaction before you sign. Deterministic risk rules + plain-English AI translation.",
   metadataBase: new URL(resolvedSiteUrl),
+  authors: [{ name: "Omar Elhorbity" }],
   openGraph: {
-    title: "TxGuardian",
+    title: "TxGuardian — Pre-sign transaction safety for Solana",
     description:
-      "Pre-sign transaction safety copilot for Solana. Deterministic rules, AI translation, no signing surface.",
+      "Deterministic risk rules, on-chain attestation registry, plain-English AI translation. Web scanner, browser extension, and TypeScript SDK.",
     type: "website",
+    siteName: "TxGuardian",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TxGuardian — Pre-sign transaction safety for Solana",
+    description:
+      "Deterministic risk rules, on-chain registry, plain-English AI translation. Scanner + extension + SDK.",
   },
   robots: {
     index: true,
