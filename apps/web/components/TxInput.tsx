@@ -12,6 +12,20 @@ export interface TxInputProps {
   disabled?: boolean;
 }
 
+/**
+ * Solana signature: 64-byte base58 string, 87–88 chars long (varies with
+ * leading-zero handling). Used here only for the inline input hint badge —
+ * the server does the authoritative check.
+ */
+const SIGNATURE_REGEX = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
+
+function detectInputKind(value: string): "signature" | "base64" | "empty" {
+  const v = value.trim();
+  if (v.length === 0) return "empty";
+  if (SIGNATURE_REGEX.test(v)) return "signature";
+  return "base64";
+}
+
 export function TxInput({
   value,
   onChange,
@@ -22,6 +36,7 @@ export function TxInput({
 }: TxInputProps) {
   const inputId = useId();
   const helpId = useId();
+  const kind = detectInputKind(value);
 
   return (
     <div className="panel p-5">
@@ -29,17 +44,16 @@ export function TxInput({
         htmlFor={inputId}
         className="block text-[13px] font-medium text-text-primary"
       >
-        Paste a base64-serialized Solana transaction
+        Paste a transaction signature or base64 transaction
       </label>
       <p
         id={helpId}
         className="mt-1 text-[12px] leading-[1.5] text-text-muted"
       >
-        Anything copied from a wallet's signing prompt, or built with{" "}
-        <code className="font-mono text-[11px] text-text-secondary">
-          tx.serialize().toString(&quot;base64&quot;)
-        </code>
-        .
+        Drop any signature copied from{" "}
+        <span className="text-text-secondary">Solana Explorer</span> (88-char
+        base58), or paste a base64-serialized transaction. The engine handles
+        both.
       </p>
       <textarea
         id={inputId}
@@ -50,10 +64,21 @@ export function TxInput({
         spellCheck={false}
         autoCorrect="off"
         autoCapitalize="off"
-        rows={6}
-        placeholder="AQABA..."
+        rows={5}
+        placeholder="5VERv8N…  ·or·  AQABA…"
         className="mt-3 block w-full resize-y rounded-md border border-border bg-surface-2 p-3 font-mono text-[12px] leading-[1.55] text-text-primary placeholder:text-text-muted disabled:opacity-50"
       />
+
+      {kind !== "empty" && (
+        <p className="mt-2 text-[11px] text-text-muted">
+          Detected:{" "}
+          <span className="font-mono text-text-secondary">
+            {kind === "signature"
+              ? "transaction signature — will fetch from RPC"
+              : "base64 transaction — will analyze directly"}
+          </span>
+        </p>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <fieldset className="inline-flex items-center gap-1 rounded-sm bg-surface-2 p-1">

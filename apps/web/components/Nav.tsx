@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 import { WalletButton } from "./WalletButton";
 
 const links = [
-  { href: "/scan", label: "Scan" },
   { href: "/extension", label: "Extension" },
+  { href: "/scan", label: "Demo" },
   { href: "/registry", label: "Registry" },
   { href: "/docs", label: "Docs" },
   { href: "/about", label: "About" },
