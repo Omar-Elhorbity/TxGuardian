@@ -249,7 +249,7 @@ export default function HomePage() {
             <div className="rounded-md bg-accent-soft p-2 text-accent">
               <KeyRound className="h-5 w-5" strokeWidth={1.75} aria-hidden />
             </div>
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <h2
                 id="sdk-heading"
                 className="text-[18px] font-semibold tracking-tight"
