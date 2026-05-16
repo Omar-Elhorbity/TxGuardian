@@ -35,15 +35,14 @@ export default function AboutPage() {
 
       <section className="mt-10">
         <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
-          Who it's for
+          Who it&apos;s for
         </h2>
         <div className="panel mt-3 p-5 text-[14px] leading-[1.7] text-text-secondary">
-          Active DeFi users on Phantom and other Solana wallets. Fast-moving,
-          chasing yields, airdrops, and new mints — the kind of user who signs
-          transactions quickly without reading raw instruction data and relies
-          on wallet simulation previews. That reliance is exactly where
-          drainers attack. TxGuardian gives them a second opinion before they
-          sign.
+          Active Solana DeFi users — anyone signing transactions on Phantom or
+          another Wallet Standard wallet. Particularly relevant if you chase
+          yields, airdrops, and new mints, where signing happens fast and
+          drainers count on you not reading the raw instruction data. The
+          wallet preview only shows simulation; TxGuardian shows intent.
         </div>
       </section>
 
@@ -111,30 +110,57 @@ Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT 
 
       <section className="mt-10">
         <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
-          Roadmap
+          Scope
         </h2>
-        <ol className="mt-3 space-y-3">
-          <RoadmapRow
-            phase="Now"
-            title="Scanner + SDK + on-chain registry + browser extension"
-            body="All four surfaces shipping. Public web scanner with sign-and-send, framework-agnostic TypeScript SDK, Anchor program live on devnet feeding the drainer rule, and a Chrome extension that intercepts every signing request on every dApp."
-          />
-          <RoadmapRow
-            phase="Next"
-            title="Solana Mobile app"
-            body="Native Android app for the Seeker phone. Mobile Wallet Adapter integration so the same scanner UX works against Phantom mobile / Solflare mobile. QR-scan a transaction on the go, decide before signing."
-          />
-          <RoadmapRow
-            phase="Then"
-            title="Embeddable widget + npm publish"
-            body="A drop-in React component for dApps to show pre-sign risk checks before they ever route to the wallet. SDK published to npm with semantic versioning."
-          />
-          <RoadmapRow
-            phase="Later"
-            title="Multisig curator + Phantom Blocks + enterprise API"
-            body="Registry admin moves to a multisig. Phantom Blocks partnership feeds our threat intelligence directly into Phantom's built-in protection. Authenticated rate-limited REST API for wallets, custodians, exchanges."
-          />
-        </ol>
+        <p className="mt-3 text-[14px] leading-[1.7] text-text-primary">
+          Four surfaces share one engine: a public web scanner with
+          sign-and-send, a framework-agnostic TypeScript SDK, an Anchor
+          program live on devnet feeding the drainer rule, and a Chrome
+          extension that intercepts every signing request on every dApp.
+        </p>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
+          Known limitations
+        </h2>
+        <ul className="mt-3 space-y-2 text-[13px] leading-[1.7] text-text-secondary">
+          <li>
+            <strong className="text-text-primary">Devnet only.</strong> The
+            on-chain registry runs on devnet. Mainnet deployment requires
+            multisig governance and a curated initial entry set.
+          </li>
+          <li>
+            <strong className="text-text-primary">Single-keypair admin.</strong>{" "}
+            The registry is currently controlled by one keypair. The{" "}
+            <code className="font-mono text-[12px] text-text-primary">
+              update_admin
+            </code>{" "}
+            instruction supports rotation to a multisig.
+          </li>
+          <li>
+            <strong className="text-text-primary">
+              No coverage of in-wallet flows.
+            </strong>{" "}
+            Phantom's built-in Send / Swap / Stake happen inside Phantom's
+            sandbox and cannot be intercepted by any browser extension. Same
+            constraint every wallet-safety extension hits.
+          </li>
+          <li>
+            <strong className="text-text-primary">Mobile not yet covered.</strong>{" "}
+            Browser extensions do not run in mobile in-app browsers. A
+            Solana Mobile app would close this gap.
+          </li>
+          <li>
+            <strong className="text-text-primary">TOCTOU detection schema-only.</strong>{" "}
+            The{" "}
+            <code className="font-mono text-[12px] text-text-primary">
+              TOCTOU_PATTERN
+            </code>{" "}
+            flag is part of the result schema but generic runtime detection
+            requires per-program decoders that don&apos;t exist yet.
+          </li>
+        </ul>
       </section>
 
       <section className="mt-12 border-t border-border pt-6">
@@ -151,29 +177,5 @@ Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT 
         </Link>
       </section>
     </div>
-  );
-}
-
-function RoadmapRow({
-  phase,
-  title,
-  body,
-}: {
-  phase: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <li className="grid gap-3 md:grid-cols-[80px_1fr] md:gap-5">
-      <div className="text-[12px] font-mono uppercase text-text-muted md:pt-0.5">
-        {phase}
-      </div>
-      <div>
-        <h3 className="text-[14px] font-semibold text-text-primary">{title}</h3>
-        <p className="mt-1 text-[13px] leading-[1.65] text-text-secondary">
-          {body}
-        </p>
-      </div>
-    </li>
   );
 }

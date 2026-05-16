@@ -4,6 +4,12 @@ Pre-sign transaction safety for Solana. Four shipping surfaces, one engine.
 
 TxGuardian closes the gap between **what a wallet preview says** and **what a transaction's instructions actually authorize**. A deterministic rule engine — backed by a Solana program holding a community-curated drainer/risk feed — decides what's risky. An AI translator turns the verdict into plain English. No signing surface, no key access.
 
+## Live
+
+- **Web scanner:** [txguardian.vercel.app](https://txguardian.vercel.app)
+- **Browser extension:** see [Install the extension](#install-the-extension) below
+- **On-chain registry (devnet):** [`Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7`](https://explorer.solana.com/address/Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7?cluster=devnet)
+
 ## What ships
 
 - **Web scanner** (`apps/web`) — Next.js public scanner. Paste a transaction, connect a wallet, sign-and-send.
@@ -47,7 +53,7 @@ The deterministic engine is the source of truth on **risk**. The LLM only transl
 | `UNKNOWN_PROGRAM` | Medium | Program not in well-known allowlist |
 | `MULTI_INSTRUCTION_COMPLEXITY` | Medium | 5+ non-ComputeBudget instructions |
 | `UNUSUAL_FEE` | Low | Priority fee ≥ 1M micro-lamports/CU |
-| `TOCTOU_PATTERN` | Medium | Schema reserved — runtime detection on the roadmap |
+| `TOCTOU_PATTERN` | Medium | Schema reserved. Generic runtime detection requires per-program decoders and is not currently implemented. |
 
 ## Repo layout
 
@@ -118,14 +124,16 @@ anchor test                # 9 cases
 pnpm seed-registry         # populates the live registry with demo entries
 ```
 
-For the browser extension:
+## Install the extension
+
+The extension is Manifest V3 (Chrome / Brave / Arc / Edge). It defaults to the hosted analyzer at `txguardian.vercel.app`; the popup lets you point at any other deployment (including localhost for development).
 
 ```bash
 pnpm --filter @txguardian/extension build
 # Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
 ```
 
-Full extension install guide at [`/extension`](http://localhost:3000/extension) once dev is running.
+Walkthrough with screenshots at [`/extension`](https://txguardian.vercel.app/extension). Privacy details at [`/privacy`](https://txguardian.vercel.app/privacy).
 
 ### Required env
 
@@ -134,20 +142,12 @@ Full extension install guide at [`/extension`](http://localhost:3000/extension) 
 | `RPC_URL` | Solana JSON-RPC endpoint | Helius / QuickNode dev key. Public RPCs rate-limit. |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | LLM translator (Gemini 2.5 Flash) | Required for Full mode. Free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Fast mode works without it. |
 
-## Demo flow (~90 seconds)
+## Try it
 
-1. **Open `/`** — read the lede, point at the side-by-side comparison hero.
-2. **Click `/scan`** → click **Danger sample**.
-   - Wallet connection rebuilds the sample with your pubkey + fresh blockhash.
-   - Result: red verdict, multiple flags including the on-chain registry match.
-   - Expand the on-chain flag to show `evidence.source: "onchain"` — proves the deployed Anchor program is feeding the rule.
-3. **Open `/registry`** — show the live entries, click the program ID to open Solana Explorer (real on-chain bytecode + transaction history).
-4. **Open `/extension`** — point at install steps. If the extension is loaded:
-5. **Open `/demo-sign`** → click **Sign test transaction**.
-   - The TxGuardian extension modal slides up with the verdict (Safe — clean self-transfer).
-   - Approve → Phantom's prompt opens for final confirmation.
-   - "Same engine, three surfaces. The wallet always has the final say."
-6. **Cut to `/docs`** — show the 5-line SDK integration.
+- **`/scan`** — paste any Solana transaction (base64 or base58) or pick the **Danger sample**, connect a wallet, and read the verdict. The danger sample triggers an on-chain registry match — expand the flag to see `evidence.source: "onchain"`.
+- **`/registry`** — live view of the on-chain feed, with a link to the program on Solana Explorer.
+- **`/extension`** — install guide. After loading the extension, `/demo-sign` triggers a real signing intercept against any wallet.
+- **`/docs`** — SDK integration (five lines) plus the rule and registry reference.
 
 ## License
 

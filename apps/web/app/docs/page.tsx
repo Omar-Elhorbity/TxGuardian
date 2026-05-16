@@ -70,8 +70,8 @@ export default function DocsPage() {
             <code className="font-mono text-[12px] text-text-primary">
               @txguardian/sdk
             </code>{" "}
-            in this monorepo. An npm-published build is on the roadmap. To use
-            it today, clone and link:
+            in this monorepo. Clone and link to use it from any project in the
+            workspace:
           </p>
           <CodeBlock>
 {`git clone https://github.com/Omar-Elhorbity/TxGuardian
@@ -228,7 +228,7 @@ const summary = await fetchRegistry(connection); // admin + counters`}
                 <FlagRow
                   id="TOCTOU_PATTERN"
                   sev="medium"
-                  detects="Schema reserved — runtime detection ships in v1 (browser extension)."
+                  detects="Schema reserved. Generic runtime detection requires per-program decoders and is not currently implemented."
                 />
               </tbody>
             </table>
@@ -244,8 +244,7 @@ const summary = await fetchRegistry(connection); // admin + counters`}
             The drainer blocklist isn't hardcoded — it lives on-chain as an{" "}
             <strong className="text-text-primary">Anchor program</strong>{" "}
             deployed on Solana devnet. Anyone can submit a flag; an admin
-            keypair (multisig in v1) confirms or revokes; the SDK reads
-            confirmed entries via{" "}
+            keypair confirms or revokes; the SDK reads confirmed entries via{" "}
             <code className="font-mono text-[12px] text-text-primary">
               getProgramAccounts
             </code>{" "}

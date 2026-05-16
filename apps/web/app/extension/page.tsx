@@ -225,9 +225,8 @@ host_permissions: ["https://your-deployment.vercel.app/*", ...]`}
         <p className="mt-3 text-[12px] leading-[1.65] text-text-muted">
           Phantom's internal flows can't be intercepted by any extension —
           architectural limit of the browser sandbox. Same constraint
-          Wallet Guard, Pocket Universe, and Blowfish hit. The only path
-          there is the Phantom Blocks partner program, which is in the v1
-          roadmap.
+          Wallet Guard, Pocket Universe, and Blowfish hit. Closing that gap
+          requires Phantom's Blocks partner program.
         </p>
       </section>
 
@@ -310,17 +309,10 @@ host_permissions: ["https://your-deployment.vercel.app/*", ...]`}
         </p>
       </section>
 
-      {/* Roadmap call-back */}
       <section className="mt-16 border-t border-border pt-8">
         <p className="text-[14px] leading-[1.65] text-text-secondary">
-          The next surface is{" "}
-          <Link
-            href="/about"
-            className="text-accent hover:text-accent-hover"
-          >
-            Solana Mobile
-          </Link>{" "}
-          — same security infrastructure, native to the Seeker phone.
+          Open source under the MIT license. Source, issues, and contributions
+          welcome.
         </p>
         <a
           href="https://github.com/Omar-Elhorbity/TxGuardian"

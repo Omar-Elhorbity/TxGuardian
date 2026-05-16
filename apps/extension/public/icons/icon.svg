@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!--
+    TxGuardian icon. Shield silhouette in the accent color on a near-black
+    surface, with a checkmark — reads at 16px and stays distinct from the
+    generic Chrome puzzle piece.
+  -->
+  <rect width="128" height="128" rx="22" fill="#0b0c0f"/>
+  <path
+    d="M64 18 L98 30 V62 C98 86 84 102 64 110 C44 102 30 86 30 62 V30 Z"
+    fill="#d6c79b"
+  />
+  <path
+    d="M48 64 L60 76 L82 52"
+    fill="none"
+    stroke="#0b0c0f"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
