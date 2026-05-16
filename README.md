@@ -30,16 +30,21 @@ TxGuardian closes the gap between **what a wallet preview says** and **what a tr
 ## Architecture
 
 ```
-Web scanner   ┐
-Extension     ┤── POST /api/analyze ── @txguardian/sdk
-Embedded SDK  ┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                         ├─ Decoder    (instruction summaries; memo stripped)
-                                         ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                         ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                         ├─ Rules      (deterministic — source of truth) ←┘
-                                         ├─ Scorer     (severity → 0–100 → recommendation)
-                                         └─ Translator (Gemini 2.5 Flash — never decides risk)
+Extension          ─┐
+                    ├── HTTP /api/analyze ──┐
+Web demo (/scan)   ─┘                       │
+                                            ├── @txguardian/sdk  (the engine)
+Third-party        ─── direct npm import ───┘
+integrations                                ├─ Parser     (legacy + v0 + ALT + Token-2022)
+                                            ├─ Decoder    (instruction summaries; memo stripped)
+                                            ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
+                                            ├─ Registry   (on-chain getProgramAccounts) ─────┐
+                                            ├─ Rules      (deterministic — source of truth) ←┘
+                                            ├─ Scorer     (severity → 0–100 → recommendation)
+                                            └─ Translator (Gemini 2.5 Flash — never decides risk)
 ```
+
+Three consumer types, two paths into one engine. The extension and the web demo speak HTTP to the analyzer route (so secrets stay server-side); third-party integrators import the SDK directly into their own Node or browser runtime.
 
 The deterministic engine is the source of truth on **risk**. The LLM only translates — it cannot raise, lower, or invent flags, and the recommendation is enum-locked to the deterministic level.
 
@@ -66,21 +71,22 @@ TxGuardian/
 │   └── src/                        # parser, decode, simulate, registry, rules,
 │                                   # scorer, explain, constants, types
 │
-├── apps/web/                       # Next.js scanner (public-facing)
+├── apps/web/                       # Next.js site (extension download, demo, docs)
 │   ├── app/
-│   │   ├── page.tsx                # /
-│   │   ├── scan/page.tsx           # /scan — paste/sample + sign-and-send
-│   │   ├── extension/page.tsx      # /extension — install guide + zip download
+│   │   ├── page.tsx                # / — extension-led landing page
+│   │   ├── extension/page.tsx      # /extension — primary product page + zip download
+│   │   ├── scan/page.tsx           # /scan — engine demo: sample / base64 / signature
+│   │   ├── demo-sign/page.tsx      # /demo-sign — verify installed extension intercepts
 │   │   ├── registry/page.tsx       # /registry — live on-chain feed
+│   │   ├── playground/page.tsx     # /playground — raw TxRiskResult JSON for SDK eval
 │   │   ├── docs/page.tsx
 │   │   ├── about/page.tsx
 │   │   ├── privacy/page.tsx        # /privacy — extension privacy policy
-│   │   ├── playground/page.tsx
-│   │   ├── demo-sign/page.tsx      # extension test surface
 │   │   ├── icon.svg                # favicon (auto-emitted by Next)
 │   │   ├── apple-icon.png          # Apple touch icon
+│   │   ├── opengraph-image.tsx     # OG card for link previews
 │   │   └── api/
-│   │       ├── analyze/route.ts
+│   │       ├── analyze/route.ts    # POST: base64 tx OR base58 signature
 │   │       ├── fixtures/route.ts
 │   │       └── registry/route.ts
 │   └── components/
@@ -105,7 +111,29 @@ TxGuardian/
 └── Anchor.toml + Cargo.toml + pnpm-workspace.yaml
 ```
 
-## Local setup
+## Install the extension
+
+Manifest V3 (Chrome / Brave / Arc / Edge). Defaults to the hosted analyzer at `tx-guardian-web.vercel.app` — zero configuration, no API keys to set.
+
+1. Download [`txguardian-extension.zip`](https://tx-guardian-web.vercel.app/txguardian-extension.zip) and extract it
+2. `chrome://extensions` → toggle **Developer mode**
+3. Click **Load unpacked** → select the extracted folder
+
+Then open [`/demo-sign`](https://tx-guardian-web.vercel.app/demo-sign) to verify the extension is intercepting signing requests on this page.
+
+Walkthrough with screenshots at [`/extension`](https://tx-guardian-web.vercel.app/extension). Privacy details at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
+
+## Try the engine without installing
+
+The same engine that powers the extension runs on the public demo at [`/scan`](https://tx-guardian-web.vercel.app/scan). Three input modes in one box:
+
+- Pick a **sample** (Safe / Caution / Danger) to see the verdict shape
+- Paste a **Solana Explorer signature** (88-char base58) — the server fetches the transaction from RPC and runs the analyzer; useful for post-hoc analysis of any past tx
+- Paste a **base64 transaction** if you have one
+
+Useful for evaluating the engine, reproducing what a drainer victim signed, or testing your SDK integration without bundling anything.
+
+## Local setup (for contributors / self-hosting)
 
 Requires **Node 20+** and **pnpm 9+**. For the Rust program: **Rust stable + Solana CLI 1.18.x + Anchor 0.32.x** (the `scripts/setup-solana-toolchain.sh` installer handles this).
 
@@ -131,17 +159,7 @@ anchor test                # 9 cases
 pnpm seed-registry         # populates the live registry with demo entries
 ```
 
-## Install the extension
-
-Manifest V3 (Chrome / Brave / Arc / Edge). Defaults to the hosted analyzer at `tx-guardian-web.vercel.app` — zero configuration.
-
-1. Download [`txguardian-extension.zip`](https://tx-guardian-web.vercel.app/txguardian-extension.zip) and extract it
-2. `chrome://extensions` → toggle **Developer mode**
-3. Click **Load unpacked** → select the extracted folder
-
-Walkthrough with screenshots at [`/extension`](https://tx-guardian-web.vercel.app/extension). Privacy details at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
-
-**Build from source** (for development or auditing):
+**Build the extension from source** (for development or auditing):
 
 ```bash
 pnpm --filter @txguardian/extension package
@@ -149,19 +167,14 @@ pnpm --filter @txguardian/extension package
 # Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
 ```
 
+The extension popup lets you override the analyzer endpoint at runtime — point it at `http://localhost:3000/api/analyze` to test against your local dev server without rebuilding.
+
 ### Required env
 
 | Var | Purpose | Notes |
 |---|---|---|
 | `RPC_URL` | Solana JSON-RPC endpoint | Helius / QuickNode dev key. Public RPCs rate-limit. |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | LLM translator (Gemini 2.5 Flash) | Required for Full mode. Free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Fast mode works without it. |
-
-## Try it
-
-- **`/scan`** — paste any Solana transaction (base64 or base58) or pick the **Danger sample**, connect a wallet, and read the verdict. The danger sample triggers an on-chain registry match — expand the flag to see `evidence.source: "onchain"`.
-- **`/registry`** — live view of the on-chain feed, with a link to the program on Solana Explorer.
-- **`/extension`** — install guide. After loading the extension, `/demo-sign` triggers a real signing intercept against any wallet.
-- **`/docs`** — SDK integration (five lines) plus the rule and registry reference.
 
 ## License
 
