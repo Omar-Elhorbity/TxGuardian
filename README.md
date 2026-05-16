@@ -70,12 +70,15 @@ TxGuardian/
 │   ├── app/
 │   │   ├── page.tsx                # /
 │   │   ├── scan/page.tsx           # /scan — paste/sample + sign-and-send
-│   │   ├── extension/page.tsx      # /extension — install guide
+│   │   ├── extension/page.tsx      # /extension — install guide + zip download
 │   │   ├── registry/page.tsx       # /registry — live on-chain feed
 │   │   ├── docs/page.tsx
 │   │   ├── about/page.tsx
+│   │   ├── privacy/page.tsx        # /privacy — extension privacy policy
 │   │   ├── playground/page.tsx
 │   │   ├── demo-sign/page.tsx      # extension test surface
+│   │   ├── icon.svg                # favicon (auto-emitted by Next)
+│   │   ├── apple-icon.png          # Apple touch icon
 │   │   └── api/
 │   │       ├── analyze/route.ts
 │   │       ├── fixtures/route.ts
@@ -87,7 +90,11 @@ TxGuardian/
 │   │   ├── page.ts                 # MAIN-world wallet patches + modal
 │   │   ├── content.ts              # ISOLATED bridge (page <-> service worker)
 │   │   ├── background.ts           # Service worker — POSTs /api/analyze
+│   │   ├── popup.html + popup.ts   # Toolbar popup: endpoint config + status
+│   │   ├── config.ts               # Default endpoint + storage keys
 │   │   └── types.ts
+│   ├── public/icons/               # 16/32/48/128 PNG + source SVG
+│   ├── scripts/zip-dist.mjs        # Builds the downloadable extension zip
 │   ├── manifest.config.ts
 │   ├── vite.config.ts
 │   └── dist/                       # Tracked in git for load-unpacked

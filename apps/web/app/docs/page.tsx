@@ -54,7 +54,7 @@ export default function DocsPage() {
               @txguardian/sdk
             </code>{" "}
             is a TypeScript SDK that takes a Solana transaction and returns a
-            structured risk verdict. Five active rules + a deployed Solana
+            structured risk verdict. Six active rules + a deployed Solana
             program backing the on-chain feed. One AI translator. No signing
             surface.
           </p>

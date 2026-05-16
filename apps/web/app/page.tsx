@@ -27,10 +27,10 @@ export default function HomePage() {
         </h1>
         <p className="mt-5 max-w-[620px] text-[15px] leading-[1.65] text-text-secondary">
           TxGuardian inspects a Solana transaction against deterministic risk
-          rules — drainer programs, unlimited token approvals, intent–simulation
-          mismatches — checks them against a live on-chain attestation
-          registry, and translates the verdict into plain English. Then it
-          steps aside so you decide. No signing surface, no key access.
+          rules — drainer programs, unlimited token approvals, transfers to
+          non-signer destinations — checks them against a live on-chain
+          attestation registry, and translates the verdict into plain English.
+          Then it steps aside so you decide. No signing surface, no key access.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link href="/scan" className="btn btn-primary">
@@ -107,7 +107,7 @@ export default function HomePage() {
           <Step
             n={2}
             title="Deterministic rule engine"
-            body="Five active rules check for known drainers, unlimited approvals, complexity, intent–simulation mismatches, and unusual fees."
+            body="Six active rules check for known drainers, unlimited approvals, suspicious destinations, unknown programs, instruction complexity, and unusual fees."
           />
           <Step
             n={3}
@@ -161,14 +161,14 @@ export default function HomePage() {
                 </li>
                 <li className="flex gap-2">
                   <span aria-hidden className="text-risk-safe">✓</span>
-                  Open source, load unpacked
+                  One-click download, no build step
                 </li>
               </ul>
               <Link
                 href="/extension"
                 className="mt-5 inline-flex items-center gap-1 text-[13px] text-accent hover:text-accent-hover"
               >
-                Install in 4 steps
+                Install in 3 steps
                 <ArrowRight
                   className="h-3.5 w-3.5"
                   strokeWidth={2}
@@ -201,8 +201,8 @@ export default function HomePage() {
               <p className="mt-2 max-w-[640px] text-[14px] leading-[1.6] text-text-secondary">
                 Most security tools ship a closed feed and ask you to trust
                 them. TxGuardian&apos;s feed is an Anchor program on Solana
-                devnet. Anyone can submit, an admin keypair (multisig in v1)
-                confirms, and any wallet or dApp reads it for free via{" "}
+                devnet. Anyone can submit, an admin keypair confirms, and any
+                wallet or dApp reads it for free via{" "}
                 <code className="font-mono text-[12px] text-text-primary">
                   getProgramAccounts
                 </code>
