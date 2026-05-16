@@ -1,21 +1,21 @@
 # TxGuardian
 
-Pre-sign transaction safety for Solana. Four shipping surfaces, one engine.
+A browser extension that intercepts every Solana signing request and shows a pre-sign safety verdict before your wallet's prompt appears.
 
 TxGuardian closes the gap between **what a wallet preview says** and **what a transaction's instructions actually authorize**. A deterministic rule engine — backed by a Solana program holding a community-curated drainer/risk feed — decides what's risky. An AI translator turns the verdict into plain English. No signing surface, no key access.
 
 ## Live
 
-- **Web scanner:** [tx-guardian-web.vercel.app](https://tx-guardian-web.vercel.app)
-- **Browser extension:** see [Install the extension](#install-the-extension) below
+- **Browser extension:** [tx-guardian-web.vercel.app/extension](https://tx-guardian-web.vercel.app/extension) — one-click download
+- **Engine demo:** [tx-guardian-web.vercel.app/scan](https://tx-guardian-web.vercel.app/scan) — try the engine on any Solana signature or base64 transaction
 - **On-chain registry (devnet):** [`Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7`](https://explorer.solana.com/address/Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7?cluster=devnet)
 
 ## What ships
 
-- **Web scanner** (`apps/web`) — Next.js public scanner. Paste a transaction, connect a wallet, sign-and-send.
-- **Browser extension** (`apps/extension`) — Chrome/Brave/Arc Manifest V3. Sits between any Solana dApp and your wallet, intercepts every signing request, shows the verdict before the wallet's prompt.
-- **TypeScript SDK** (`packages/sdk`) — `@txguardian/sdk`. One function: `analyze(options) → TxRiskResult`. Framework-agnostic, embeddable in wallets, dApps, signing services.
+- **Browser extension** (`apps/extension`) — Manifest V3 for Chrome / Brave / Arc / Edge. The primary surface. Sits between every Solana dApp and your wallet, intercepts every signing request, shows the verdict overlay before your wallet's prompt.
+- **TypeScript SDK** (`packages/sdk`) — `@txguardian/sdk`. The same engine the extension uses, packaged as a one-function library. For wallets, dApps, and signing services that want to embed pre-sign checks directly.
 - **On-chain registry** (`programs/txguardian-registry`) — Anchor program (Rust) deployed on Solana devnet. The decentralized drainer/risk feed. Anyone can submit, an admin keypair attests, the SDK reads at scan time.
+- **Engine demo** (`apps/web/scan`) — public web demo for trying the engine on any transaction. Accepts a Solana signature (fetched from RPC) or a raw base64 transaction. Useful for post-hoc analysis and for evaluating the engine without installing anything.
 
 ## On-chain registry
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import type { TxRiskResult } from "@txguardian/sdk";
@@ -8,8 +9,16 @@ import { SampleTxPicker } from "@/components/SampleTxPicker";
 import { RiskSkeleton } from "@/components/RiskSkeleton";
 import { ResultView } from "@/components/ResultView";
 import { RecommendationBar } from "@/components/RecommendationBar";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, FlaskConical } from "lucide-react";
 import { signAndSend, checkSignability } from "@/lib/sign-and-send";
+
+interface Provenance {
+  signature: string;
+  slot: number;
+  blockTime: number | null;
+}
+
+type ResultWithProvenance = TxRiskResult & { provenance?: Provenance };
 
 type State =
   | { kind: "idle" }
@@ -17,9 +26,10 @@ type State =
   | { kind: "error"; message: string }
   | {
       kind: "result";
-      data: TxRiskResult;
-      /** The base64 transaction that was analyzed. Needed for sign+send. */
-      transaction: string;
+      data: ResultWithProvenance;
+      /** The base64 transaction that was analyzed. Null when the input was a
+       *  signature (mined tx — nothing to sign-and-send). */
+      transaction: string | null;
     };
 
 export default function ScanPage() {
@@ -34,8 +44,8 @@ export default function ScanPage() {
   const wallet = useWallet();
 
   const submit = useCallback(
-    async (transaction: string, m: "fast" | "full") => {
-      const trimmed = transaction.trim();
+    async (input: string, m: "fast" | "full") => {
+      const trimmed = input.trim();
       if (!trimmed) return;
       setSignature(null);
       setSendError(null);
@@ -44,6 +54,7 @@ export default function ScanPage() {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // Server detects signature vs base64; keep one input field.
           body: JSON.stringify({ transaction: trimmed, mode: m }),
         });
         const json = await res.json();
@@ -57,10 +68,13 @@ export default function ScanPage() {
           });
           return;
         }
+        const data = json as ResultWithProvenance;
         setState({
           kind: "result",
-          data: json as TxRiskResult,
-          transaction: trimmed,
+          data,
+          // If the server reported provenance, this was a mined-signature
+          // lookup — there's no signable base64 we can send.
+          transaction: data.provenance ? null : trimmed,
         });
       } catch {
         setState({
@@ -79,9 +93,6 @@ export default function ScanPage() {
   const onPickSample = useCallback(
     async (type: "safe" | "caution" | "danger") => {
       try {
-        // If wallet is connected, request a signable variant: server rebuilds
-        // the sample with the connected pubkey as payer + fresh blockhash so
-        // the user can actually sign and submit.
         const params = new URLSearchParams({ type });
         if (wallet.publicKey) {
           params.set("payer", wallet.publicKey.toBase58());
@@ -117,11 +128,13 @@ export default function ScanPage() {
     }
   }, []);
 
-  // The transaction we'd sign — only valid in result state.
   const resultTx =
     state.kind === "result" ? state.transaction : null;
+  const provenance =
+    state.kind === "result" ? state.data.provenance : undefined;
 
   // Pre-flight: is this transaction signable by the connected wallet?
+  // Disabled entirely when there's no base64 (signature-based analysis).
   const proceedDisabledReason = useMemo(() => {
     if (!resultTx) return "No transaction to sign.";
     return checkSignability(resultTx, wallet.publicKey ?? null);
@@ -145,15 +158,30 @@ export default function ScanPage() {
 
   return (
     <div className="mx-auto max-w-[960px] px-6 pb-8 pt-10 md:pt-14">
-      <header className="mb-8 max-w-[640px]">
+      <header className="mb-8 max-w-[680px]">
+        <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface-1 px-3 py-1 text-[12px] text-text-secondary">
+          <FlaskConical
+            className="h-3 w-3 text-accent"
+            strokeWidth={2}
+            aria-hidden
+          />
+          Engine demo
+        </p>
         <h1 className="text-[28px] font-semibold tracking-tight md:text-[32px]">
-          Inspect a transaction
+          Try the analyzer on any Solana transaction
         </h1>
-        <p className="mt-2 text-[14px] leading-[1.6] text-text-secondary">
-          Paste a base64 Solana transaction below. The deterministic rule
-          engine and (in Full mode) AI translator run on the server. If you
-          want to sign and submit, connect a wallet — TxGuardian never holds
-          your keys.
+        <p className="mt-3 text-[14px] leading-[1.65] text-text-secondary">
+          The same deterministic engine the{" "}
+          <Link
+            href="/extension"
+            className="text-accent hover:text-accent-hover"
+          >
+            browser extension
+          </Link>{" "}
+          uses behind every signing prompt. Pick a sample, drop in a signature
+          from Solana Explorer, or paste a base64 transaction — get the
+          verdict, flags, and plain-English explanation. Optionally connect a
+          wallet to sign-and-send a sample on devnet.
         </p>
       </header>
 
@@ -190,7 +218,12 @@ export default function ScanPage() {
             </div>
           </div>
         )}
-        {state.kind === "result" && <ResultView result={state.data} />}
+        {state.kind === "result" && (
+          <>
+            {provenance && <ProvenanceBanner p={provenance} />}
+            <ResultView result={state.data} />
+          </>
+        )}
       </section>
 
       {sendError && (
@@ -210,7 +243,7 @@ export default function ScanPage() {
         </div>
       )}
 
-      {state.kind === "result" && (
+      {state.kind === "result" && resultTx && (
         <RecommendationBar
           level={state.data.riskLevel}
           recommendation={state.data.recommendation}
@@ -222,6 +255,58 @@ export default function ScanPage() {
           proceedDisabledReason={proceedDisabledReason}
         />
       )}
+
+      {/* Where you actually want this in production */}
+      <section className="mt-16 panel-strong p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-[520px]">
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              For real use, install the extension
+            </h2>
+            <p className="mt-2 text-[13px] leading-[1.65] text-text-secondary">
+              You don&apos;t have base64 transactions sitting around — your
+              wallet does. The TxGuardian extension intercepts every signing
+              request on every dApp and runs this same engine before your
+              wallet&apos;s prompt appears.
+            </p>
+          </div>
+          <Link
+            href="/extension"
+            className="btn btn-primary"
+          >
+            Install the extension
+            <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProvenanceBanner({ p }: { p: Provenance }) {
+  const explorer = `https://explorer.solana.com/tx/${p.signature}?cluster=devnet`;
+  const when = p.blockTime
+    ? new Date(p.blockTime * 1000).toISOString().replace("T", " ").slice(0, 19) +
+      " UTC"
+    : null;
+  return (
+    <div className="mb-5 rounded-md border border-info/30 bg-info-soft p-4 text-[13px] text-info">
+      <div className="font-medium">Post-hoc analysis</div>
+      <p className="mt-1 leading-[1.55] text-info opacity-90">
+        This transaction was already confirmed on-chain at slot{" "}
+        <span className="font-mono">{p.slot}</span>
+        {when ? <> ({when})</> : null}. TxGuardian is showing what the engine
+        would have flagged before signing.{" "}
+        <a
+          href={explorer}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2"
+        >
+          View on Solana Explorer
+        </a>
+        .
+      </p>
     </div>
   );
 }

@@ -18,7 +18,7 @@ export default function HomePage() {
       <section className="max-w-[720px]">
         <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface-1 px-3 py-1 text-[12px] text-text-secondary">
           <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-          Pre-sign safety layer for Solana
+          Browser extension · Solana
         </p>
         <h1 className="text-[32px] font-semibold leading-[1.15] tracking-tight md:text-[40px]">
           Know what you&apos;re signing,
@@ -26,19 +26,19 @@ export default function HomePage() {
           <span className="text-text-secondary">before you sign it.</span>
         </h1>
         <p className="mt-5 max-w-[620px] text-[15px] leading-[1.65] text-text-secondary">
-          TxGuardian inspects a Solana transaction against deterministic risk
-          rules — drainer programs, unlimited token approvals, transfers to
-          non-signer destinations — checks them against a live on-chain
-          attestation registry, and translates the verdict into plain English.
-          Then it steps aside so you decide. No signing surface, no key access.
+          TxGuardian is a browser extension that sits between your wallet and
+          every Solana dApp. Each signing request is intercepted, checked
+          against deterministic risk rules and a live on-chain attestation
+          registry, and translated into plain English. Then it steps aside so
+          you decide. No signing surface, no key access.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
-          <Link href="/scan" className="btn btn-primary">
-            Check a transaction
+          <Link href="/extension" className="btn btn-primary">
+            Install the extension
             <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
           </Link>
-          <Link href="/docs" className="btn btn-secondary">
-            View the SDK
+          <Link href="/scan" className="btn btn-secondary">
+            Try the engine
           </Link>
         </div>
       </section>
@@ -101,8 +101,8 @@ export default function HomePage() {
         <ol className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-4">
           <Step
             n={1}
-            title="Bring the transaction"
-            body="Paste base64, try a sample, or install the browser extension and any dApp's signing request gets intercepted automatically."
+            title="Extension intercepts"
+            body="Sits between your wallet and every Solana dApp. Each signing request is captured before your wallet's prompt appears."
           />
           <Step
             n={2}
@@ -254,11 +254,12 @@ export default function HomePage() {
                 id="sdk-heading"
                 className="text-[18px] font-semibold tracking-tight"
               >
-                Building on Solana? Embed TxGuardian.
+                Building on Solana? Embed the same engine.
               </h2>
               <p className="mt-2 max-w-[620px] text-[14px] leading-[1.6] text-text-secondary">
-                One function call. Wallets, dApps, and signing services drop
-                in pre-sign risk checks in under 10 minutes — including the
+                The engine that powers the extension is also a standalone
+                TypeScript SDK. Wallets, dApps, and signing services drop in
+                pre-sign risk checks in one function call — including the
                 on-chain registry lookup.
               </p>
               <pre className="mt-4 overflow-x-auto rounded-md border border-border bg-surface-2 p-4 font-mono text-[13px] text-text-primary">
@@ -276,7 +277,14 @@ if (result.riskLevel === "danger") {
               </pre>
               <p className="mt-3 text-[12px] text-text-muted">
                 Framework-agnostic. Works in any Node or browser runtime that
-                can reach a Solana RPC. Setup instructions in the docs.
+                can reach a Solana RPC. Try it live in the{" "}
+                <Link
+                  href="/scan"
+                  className="text-accent hover:text-accent-hover"
+                >
+                  engine demo
+                </Link>
+                .
               </p>
               <Link
                 href="/docs"
