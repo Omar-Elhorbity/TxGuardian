@@ -9,10 +9,10 @@
  * via the popup's endpoint override.
  */
 export const DEFAULT_ANALYZE_ENDPOINT =
-  "https://txguardian.vercel.app/api/analyze";
+  "https://tx-guardian-web.vercel.app/api/analyze";
 
 /** chrome.storage.local key holding the user-configured endpoint URL. */
 export const STORAGE_KEY_ENDPOINT = "analyzeEndpoint";
 
 /** Canonical hosted site (used for the install/onboarding tab + popup links). */
-export const HOSTED_SITE_URL = "https://txguardian.vercel.app";
+export const HOSTED_SITE_URL = "https://tx-guardian-web.vercel.app";

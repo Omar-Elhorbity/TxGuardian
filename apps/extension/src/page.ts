@@ -273,7 +273,7 @@ type Decision = "approve" | "reject";
 type ModalState =
   | { kind: "loading"; origin: string }
   | { kind: "verdict"; origin: string; verdict: TxRiskResultLike }
-  | { kind: "unavailable"; origin: string };
+  | { kind: "unavailable"; origin: string; reason?: string };
 
 async function analyzeAndAwait(txs: AnyTx[]): Promise<Decision> {
   if (txs.length === 0) return "approve";
@@ -288,16 +288,20 @@ async function analyzeAndAwait(txs: AnyTx[]): Promise<Decision> {
     // Show the loading modal immediately so the user knows we're holding
     // their signing request. The dApp's await is held while we work.
     const modal = openModal({ kind: "loading", origin: window.location.host });
-    const verdict = await requestAnalysis(base64);
+    const outcome = await requestAnalysis(base64);
 
     // Update the same modal in place — no reflow / re-mount.
-    if (!verdict) {
-      modal.update({ kind: "unavailable", origin: window.location.host });
+    if (!outcome.ok) {
+      modal.update({
+        kind: "unavailable",
+        origin: window.location.host,
+        reason: outcome.error,
+      });
     } else {
       modal.update({
         kind: "verdict",
         origin: window.location.host,
-        verdict,
+        verdict: outcome.result,
       });
     }
 
@@ -339,12 +343,16 @@ function uint8ToB64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-function requestAnalysis(base64: string): Promise<TxRiskResultLike | null> {
+type AnalysisOutcome =
+  | { ok: true; result: TxRiskResultLike }
+  | { ok: false; error: string };
+
+function requestAnalysis(base64: string): Promise<AnalysisOutcome> {
   return new Promise((resolve) => {
     const id = newId();
     const timeout = setTimeout(() => {
       window.removeEventListener("message", onMessage);
-      resolve(null);
+      resolve({ ok: false, error: "Analyzer timed out after 15s" });
     }, 15_000);
     function onMessage(event: MessageEvent): void {
       if (event.source !== window) return;
@@ -353,7 +361,11 @@ function requestAnalysis(base64: string): Promise<TxRiskResultLike | null> {
       if (msg.type !== "ANALYZE_RESPONSE" || msg.id !== id) return;
       clearTimeout(timeout);
       window.removeEventListener("message", onMessage);
-      resolve(msg.ok && msg.result ? msg.result : null);
+      if (msg.ok && msg.result) {
+        resolve({ ok: true, result: msg.result });
+      } else {
+        resolve({ ok: false, error: msg.error ?? "Unknown analyzer error" });
+      }
     }
     window.addEventListener("message", onMessage);
     const req: AnalyzeRequest = {
@@ -518,7 +530,7 @@ function renderCard(state: ModalState): string {
     case "verdict":
       return renderVerdict(state.origin, state.verdict);
     case "unavailable":
-      return renderUnavailable(state.origin);
+      return renderUnavailable(state.origin, state.reason);
   }
 }
 
@@ -552,7 +564,12 @@ function renderLoading(origin: string): string {
   `;
 }
 
-function renderUnavailable(origin: string): string {
+function renderUnavailable(origin: string, reason?: string): string {
+  const reasonHTML = reason
+    ? `<p class="explanation" style="margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; opacity: 0.7;">
+         ${escapeHTML(reason)}
+       </p>`
+    : "";
   return `
     <div class="card" role="dialog" aria-modal="true">
       ${renderHeader(origin)}
@@ -561,7 +578,7 @@ function renderUnavailable(origin: string): string {
         <div class="verdict-text">
           <div class="verdict-label">Analyzer unavailable</div>
           <div class="verdict-meta">
-            <span>Could not reach TxGuardian's analyzer.</span>
+            <span>TxGuardian couldn't get a verdict for this transaction.</span>
           </div>
         </div>
       </div>
@@ -569,6 +586,7 @@ function renderUnavailable(origin: string): string {
         <p class="explanation">
           The wallet's own confirmation will still appear next. Proceed only if you trust this dApp and the transaction it's asking you to sign.
         </p>
+        ${reasonHTML}
         <p class="explanation" style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
           Tip: open the TxGuardian extension icon in your toolbar to verify or override the analyzer endpoint.
         </p>
