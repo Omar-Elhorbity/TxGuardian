@@ -31,20 +31,17 @@ TxGuardian closes the gap between **what a wallet preview says** and **what a tr
 
 ```
 Extension          ─┐
-                    ├── HTTP /api/analyze ──┐
-Web demo (/scan)   ─┘                       │
-                                            ├── @txguardian/sdk  (the engine)
-Third-party        ─── direct npm import ───┘
-integrations                                ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                            ├─ Decoder    (instruction summaries; memo stripped)
-                                            ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                            ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                            ├─ Rules      (deterministic — source of truth) ←┘
-                                            ├─ Scorer     (severity → 0–100 → recommendation)
-                                            └─ Translator (Gemini 2.5 Flash — never decides risk)
+                    ├── HTTP /api/analyze ──── @txguardian/sdk  (the engine)
+Web demo (/scan)   ─┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
+                                               ├─ Decoder    (instruction summaries; memo stripped)
+                                               ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
+                                               ├─ Registry   (on-chain getProgramAccounts) ─────┐
+                                               ├─ Rules      (deterministic — source of truth) ←┘
+                                               ├─ Scorer     (severity → 0–100 → recommendation)
+                                               └─ Translator (Gemini 2.5 Flash — never decides risk)
 ```
 
-Three consumer types, two paths into one engine. The extension and the web demo speak HTTP to the analyzer route (so secrets stay server-side); third-party integrators import the SDK directly into their own Node or browser runtime.
+Both client surfaces (extension, web demo) speak HTTP to the analyzer route so the LLM key and the RPC URL stay server-side. The engine itself is `@txguardian/sdk`, a TypeScript package inside this monorepo — not published to npm yet, so external integrators currently need to clone the repo and import it as a workspace dependency (`workspace:*`). Publishing to npm is a one-line release away when the SDK API surface is locked.
 
 The deterministic engine is the source of truth on **risk**. The LLM only translates — it cannot raise, lower, or invent flags, and the recommendation is enum-locked to the deterministic level.
 

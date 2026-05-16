@@ -12,7 +12,9 @@ import { RecommendationBar } from "@/components/RecommendationBar";
 import {
   AlertCircle,
   ArrowRight,
+  ExternalLink,
   FlaskConical,
+  History,
   Puzzle,
   MousePointerClick,
 } from "lucide-react";
@@ -338,28 +340,60 @@ export default function ScanPage() {
 
 function ProvenanceBanner({ p }: { p: Provenance }) {
   const explorer = `https://explorer.solana.com/tx/${p.signature}?cluster=devnet`;
-  const when = p.blockTime
-    ? new Date(p.blockTime * 1000).toISOString().replace("T", " ").slice(0, 19) +
-      " UTC"
-    : null;
+  const when = p.blockTime ? formatRelativeTime(p.blockTime) : null;
   return (
-    <div className="mb-5 rounded-md border border-info/30 bg-info-soft p-4 text-[13px] text-info">
-      <div className="font-medium">Post-hoc analysis</div>
-      <p className="mt-1 leading-[1.55] text-info opacity-90">
-        This transaction was already confirmed on-chain at slot{" "}
-        <span className="font-mono">{p.slot}</span>
-        {when ? <> ({when})</> : null}. TxGuardian is showing what the engine
-        would have flagged before signing.{" "}
+    <div className="mb-5 flex items-start gap-3 rounded-md border border-info/30 bg-info-soft p-4 text-[13px] text-info">
+      <History
+        className="mt-0.5 h-4 w-4 shrink-0"
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        <div className="font-medium">This transaction is already on Solana</div>
+        <p className="mt-1 leading-[1.55] opacity-90">
+          {when
+            ? `Signed and confirmed ${when}.`
+            : "It's already been signed and confirmed."}{" "}
+          TxGuardian can&apos;t block what&apos;s already on chain — this
+          shows what the verdict would have looked like before you signed.
+        </p>
         <a
           href={explorer}
           target="_blank"
           rel="noreferrer"
-          className="underline underline-offset-2"
+          className="mt-2 inline-flex items-center gap-1 text-[12px] underline underline-offset-2"
         >
-          View on Solana Explorer
+          See it on Solana Explorer
+          <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
         </a>
-        .
-      </p>
+      </div>
     </div>
   );
+}
+
+/**
+ * Plain-English relative time. Tuned for the engine demo where users care
+ * about "is this recent or ancient?" not millisecond precision.
+ */
+function formatRelativeTime(unixSeconds: number): string {
+  const diff = Date.now() / 1000 - unixSeconds;
+  if (diff < 60) return "moments ago";
+  if (diff < 3600) {
+    const m = Math.floor(diff / 60);
+    return `${m} minute${m === 1 ? "" : "s"} ago`;
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff / 3600);
+    return `${h} hour${h === 1 ? "" : "s"} ago`;
+  }
+  if (diff < 86400 * 30) {
+    const d = Math.floor(diff / 86400);
+    return `${d} day${d === 1 ? "" : "s"} ago`;
+  }
+  if (diff < 86400 * 365) {
+    const mo = Math.floor(diff / 86400 / 30);
+    return `${mo} month${mo === 1 ? "" : "s"} ago`;
+  }
+  const y = Math.floor(diff / 86400 / 365);
+  return `${y} year${y === 1 ? "" : "s"} ago`;
 }
