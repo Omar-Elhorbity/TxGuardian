@@ -6,7 +6,7 @@ TxGuardian closes the gap between **what a wallet preview says** and **what a tr
 
 ## Live
 
-- **Web scanner:** [txguardian.vercel.app](https://txguardian.vercel.app)
+- **Web scanner:** [tx-guardian-web.vercel.app](https://tx-guardian-web.vercel.app)
 - **Browser extension:** see [Install the extension](#install-the-extension) below
 - **On-chain registry (devnet):** [`Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7`](https://explorer.solana.com/address/Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7?cluster=devnet)
 
@@ -126,14 +126,14 @@ pnpm seed-registry         # populates the live registry with demo entries
 
 ## Install the extension
 
-The extension is Manifest V3 (Chrome / Brave / Arc / Edge). It defaults to the hosted analyzer at `txguardian.vercel.app`; the popup lets you point at any other deployment (including localhost for development).
+The extension is Manifest V3 (Chrome / Brave / Arc / Edge). It defaults to the hosted analyzer at `tx-guardian-web.vercel.app`; the popup lets you point at any other deployment (including localhost for development).
 
 ```bash
 pnpm --filter @txguardian/extension build
 # Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
 ```
 
-Walkthrough with screenshots at [`/extension`](https://txguardian.vercel.app/extension). Privacy details at [`/privacy`](https://txguardian.vercel.app/privacy).
+Walkthrough with screenshots at [`/extension`](https://tx-guardian-web.vercel.app/extension). Privacy details at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
 
 ### Required env
 

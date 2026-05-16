@@ -103,18 +103,33 @@ async function runTest(opts: TestOpts): Promise<void> {
     const res = await fetch(target, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Empty body. We expect a 400 from the route; that proves it's alive.
+      // Empty body. The real /api/analyze returns JSON with an error field.
+      // Non-JSON responses indicate the URL doesn't point at the analyzer
+      // (typical case: Vercel's "DEPLOYMENT_NOT_FOUND" HTML on a missing
+      // project, or a CDN/static page at the wrong path).
       body: "{}",
       signal: controller.signal,
     });
     clearTimeout(timer);
+    const ctype = res.headers.get("content-type") ?? "";
+    const isJson = ctype.includes("application/json");
     if (res.status >= 500) {
       setStatus("err", "server error");
       if (!opts.silent) showTest(`HTTP ${res.status} — server error.`, "err");
       return;
     }
+    if (!isJson) {
+      setStatus("err", "not the analyzer");
+      if (!opts.silent) {
+        showTest(
+          `HTTP ${res.status}, non-JSON response — this URL doesn't look like the analyzer route.`,
+          "err",
+        );
+      }
+      return;
+    }
     setStatus("ok", "reachable");
-    if (!opts.silent) showTest(`HTTP ${res.status} — endpoint reachable.`, "ok");
+    if (!opts.silent) showTest(`HTTP ${res.status} — analyzer responding.`, "ok");
   } catch (err) {
     clearTimeout(timer);
     setStatus("err", "unreachable");
