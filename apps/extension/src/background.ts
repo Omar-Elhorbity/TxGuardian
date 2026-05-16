@@ -8,6 +8,10 @@
  *      to /api/analyze.
  *   2. Centralizing API access lets us add caching, rate limiting, or
  *      auth headers in one place later.
+ *
+ * The analyzer endpoint can be overridden by the user via the popup
+ * (chrome.storage.local key "analyzeEndpoint"). When unset we fall back
+ * to DEFAULT_ANALYZE_ENDPOINT, the official hosted instance.
  */
 
 import {
@@ -16,22 +20,23 @@ import {
   type AnalyzeResponse,
   type TxRiskResultLike,
 } from "./types";
-
-/**
- * Where to send analyze requests. Defaults to the local Next.js dev server.
- *
- * To point at your deployed instance:
- *   1. Edit this constant
- *   2. Make sure manifest.config.ts host_permissions includes the new host
- *   3. Rebuild the extension (`pnpm --filter @txguardian/extension build`)
- *   4. Reload the unpacked extension in chrome://extensions
- */
-const ANALYZE_ENDPOINT = "http://localhost:3000/api/analyze";
+import {
+  DEFAULT_ANALYZE_ENDPOINT,
+  HOSTED_SITE_URL,
+  STORAGE_KEY_ENDPOINT,
+} from "./config";
 
 /** Mode passed to the API. "full" = simulation + on-chain registry + AI translator. */
 const ANALYZE_MODE: "fast" | "full" = "full";
 
-console.debug("[TxGuardian] service worker booted, endpoint:", ANALYZE_ENDPOINT);
+console.log("[TxGuardian] service worker booted");
+
+// Open the install/onboarding page on first install. Updates are silent.
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    void chrome.tabs.create({ url: `${HOSTED_SITE_URL}/extension` });
+  }
+});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (
@@ -49,11 +54,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
+async function resolveEndpoint(): Promise<string> {
+  try {
+    const stored = await chrome.storage.local.get(STORAGE_KEY_ENDPOINT);
+    const value = stored[STORAGE_KEY_ENDPOINT];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  } catch {
+    // Fall through to default — never block analysis on storage failure.
+  }
+  return DEFAULT_ANALYZE_ENDPOINT;
+}
+
 async function handleAnalyze(
   req: AnalyzeRequest,
 ): Promise<AnalyzeResponse> {
+  const endpoint = await resolveEndpoint();
   try {
-    const res = await fetch(ANALYZE_ENDPOINT, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

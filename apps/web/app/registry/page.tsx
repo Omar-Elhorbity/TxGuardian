@@ -46,8 +46,11 @@ export default async function RegistryPage() {
         <p className="mt-2 text-[14px] leading-[1.65] text-text-secondary">
           The TxGuardian SDK reads confirmed entries from this on-chain feed at
           scan time and folds them into the deterministic rule engine. Anyone
-          can submit a flag; an admin keypair confirms or revokes. Multisig is
-          v1 work.
+          can submit a flag; an admin keypair confirms or revokes. The{" "}
+          <code className="font-mono text-[12px] text-text-primary">
+            update_admin
+          </code>{" "}
+          instruction supports rotation to a multisig.
         </p>
       </header>
 

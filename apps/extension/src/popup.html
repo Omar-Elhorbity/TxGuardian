@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TxGuardian</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0c0f;
+        --surface: #14161b;
+        --surface-2: #1a1d23;
+        --border: #2a2d34;
+        --border-strong: #3a3e47;
+        --text-primary: #e7e9ee;
+        --text-secondary: #a8adb8;
+        --text-muted: #6e7380;
+        --accent: #d6c79b;
+        --accent-hover: #e2d4a8;
+        --good: #5fb37a;
+        --bad: #d97a6c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        width: 320px;
+        background: var(--bg);
+        color: var(--text-primary);
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 16px 10px;
+        border-bottom: 1px solid var(--border);
+      }
+      .header .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-muted);
+        transition: background 0.15s ease;
+      }
+      .header .dot.ok {
+        background: var(--good);
+      }
+      .header .dot.err {
+        background: var(--bad);
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .header .status {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .section {
+        padding: 12px 16px;
+      }
+      .section + .section {
+        border-top: 1px solid var(--border);
+      }
+      .label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--text-muted);
+        margin: 0 0 6px;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+      }
+      input[type="url"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 8px 10px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12px;
+        outline: none;
+      }
+      input[type="url"]:focus {
+        border-color: var(--border-strong);
+      }
+      button {
+        padding: 8px 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease;
+      }
+      button:hover {
+        background: var(--surface);
+        border-color: var(--border-strong);
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #14161b;
+      }
+      button.primary:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .actions button {
+        flex: 1;
+      }
+      .hint {
+        margin: 8px 0 0;
+        font-size: 11px;
+        color: var(--text-muted);
+        line-height: 1.45;
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 11px;
+      }
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .links a:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+      }
+      .saved {
+        font-size: 11px;
+        color: var(--good);
+        margin-left: auto;
+      }
+      .test-result {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .test-result.ok {
+        color: var(--good);
+      }
+      .test-result.err {
+        color: var(--bad);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <span class="dot" id="status-dot" aria-hidden="true"></span>
+      <h1>TxGuardian</h1>
+      <span class="status" id="status-text">checking…</span>
+    </div>
+
+    <div class="section">
+      <p class="label">Analyzer endpoint</p>
+      <div class="row">
+        <input
+          id="endpoint"
+          type="url"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="https://your-instance.vercel.app/api/analyze"
+        />
+      </div>
+      <p class="hint" id="endpoint-hint">
+        URL of the /api/analyze route. Defaults to the hosted instance.
+      </p>
+      <div class="actions">
+        <button id="save">Save</button>
+        <button id="reset">Reset to default</button>
+        <button id="test" class="primary">Test connection</button>
+      </div>
+      <div id="test-result" class="test-result" hidden></div>
+    </div>
+
+    <div class="section links">
+      <a id="link-extension" href="#" target="_blank" rel="noreferrer">
+        Install guide
+      </a>
+      <a id="link-privacy" href="#" target="_blank" rel="noreferrer">
+        Privacy
+      </a>
+      <a
+        href="https://github.com/Omar-Elhorbity/TxGuardian"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Source
+      </a>
+    </div>
+
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>
