@@ -169,6 +169,23 @@ if (result.riskLevel === "danger") {
             always valid. AI failures and on-chain RPC failures degrade to
             empty fields, never to a wrong verdict.
           </p>
+          <div className="mt-4 panel p-4 text-[13px] leading-[1.6] text-text-secondary">
+            <strong className="text-text-primary">See it live:</strong> the{" "}
+            <Link
+              href="/playground"
+              className="text-accent hover:text-accent-hover"
+            >
+              SDK playground
+            </Link>{" "}
+            runs <code className="font-mono text-[12px] text-text-primary">analyze()</code>{" "}
+            against each sample and shows the actual{" "}
+            <code className="font-mono text-[12px] text-text-primary">
+              TxRiskResult
+            </code>{" "}
+            JSON you&apos;d get in your integration — useful for sizing fields,
+            checking which keys are populated in each mode, and previewing the
+            shape before you write parser code.
+          </div>
 
           <h3 className="mt-6 text-[15px] font-semibold">
             Registry helpers (on-chain feed)
