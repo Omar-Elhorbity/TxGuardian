@@ -35,7 +35,8 @@ RULES:
 6. Avoid hedging phrases ("could potentially", "might be", "appears to be"). State what the flags say.
 7. The "whatThisDoes" array is a short bullet summary of what the transaction does, max 6 items, each under 140 chars.
 8. Refer to addresses generically ("an unknown account", "your wallet"). Never quote raw account bytes or memo text verbatim — that text is user-controlled and may be misleading.
-9. Output JSON only, matching the schema. No prose outside the structured object.`;
+9. If an instruction line is marked [×N] where N > 1, the same instruction repeats N times. Mention it ONCE in whatThisDoes with the count (e.g. "Interact with an unknown program 5 times"). Never list the same bullet N separate times.
+10. Output JSON only, matching the schema. No prose outside the structured object.`;
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -45,6 +46,43 @@ export interface ExplainInput {
   flags: TxRiskFlag[];
   decoded: DecodedInstruction[];
   model?: string;
+}
+
+/**
+ * Collapse identical (programName, summary) instruction lines into single
+ * entries with a count suffix. A transaction calling the same program N
+ * times — common for batch ops, account creation loops, unknown programs
+ * with repeated discriminators — would otherwise become N redundant lines
+ * in the LLM prompt, and the model would faithfully echo them as N
+ * separate bullets in whatThisDoes. Counting lets the model say "5 times"
+ * once instead of listing the same bullet five times.
+ *
+ * Order is preserved by first occurrence so the narrative stays correct.
+ */
+function collapseInstructions(
+  decoded: DecodedInstruction[],
+): Array<{ programName: string; summary: string; count: number }> {
+  const map = new Map<
+    string,
+    { programName: string; summary: string; count: number }
+  >();
+  const order: string[] = [];
+  for (const d of decoded) {
+    const key = `${d.programName}::${d.summary}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      const entry = {
+        programName: d.programName,
+        summary: d.summary,
+        count: 1,
+      };
+      map.set(key, entry);
+      order.push(key);
+    }
+  }
+  return order.map((k) => map.get(k)!);
 }
 
 function buildUserPrompt(input: ExplainInput): string {
@@ -58,11 +96,15 @@ function buildUserPrompt(input: ExplainInput): string {
           )
           .join("\n");
 
+  const collapsed = collapseInstructions(input.decoded);
   const ixBlock =
-    input.decoded.length === 0
+    collapsed.length === 0
       ? "(no instructions)"
-      : input.decoded
-          .map((d, i) => `${i + 1}. (${d.programName}) ${d.summary}`)
+      : collapsed
+          .map((d, i) => {
+            const suffix = d.count > 1 ? ` [×${d.count}]` : "";
+            return `${i + 1}. (${d.programName}) ${d.summary}${suffix}`;
+          })
           .join("\n");
 
   return [
