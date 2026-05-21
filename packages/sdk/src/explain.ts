@@ -34,9 +34,10 @@ RULES:
 5. Keep "explanation" to 2-3 sentences. No marketing language. No emojis. No exclamation points.
 6. Avoid hedging phrases ("could potentially", "might be", "appears to be"). State what the flags say.
 7. The "whatThisDoes" array is a short bullet summary of what the transaction does, max 6 items, each under 140 chars.
-8. Refer to addresses generically ("an unknown account", "your wallet"). Never quote raw account bytes or memo text verbatim — that text is user-controlled and may be misleading.
-9. If an instruction line is marked [×N] where N > 1, the same instruction repeats N times. Mention it ONCE in whatThisDoes with the count (e.g. "Interact with an unknown program 5 times"). Never list the same bullet N separate times.
-10. Output JSON only, matching the schema. No prose outside the structured object.`;
+8. GENERALIZE ONLY account addresses — refer to them as "an unknown account", "your wallet", "another address", etc. Never quote raw 32-byte pubkeys. Memo text is user-controlled; never quote it verbatim.
+9. PRESERVE every concrete numeric value from the instruction summaries: SOL amounts ("0.00005 SOL"), token amounts ("100 USDC"), compute unit limits ("400,000"), priority fees, byte sizes, instruction counts. Users need magnitude to assess risk. "Transfer SOL to an unknown account" is uselessly vague — "Transfer 0.00005 SOL to an unknown account" tells them what's actually happening. The decoder already produces these values; never drop them.
+10. If an instruction line is marked [×N] where N > 1, the same instruction repeats N times. Mention it ONCE in whatThisDoes with the count (e.g. "Interact with an unknown program 5 times"). Never list the same bullet N separate times.
+11. Output JSON only, matching the schema. No prose outside the structured object.`;
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
