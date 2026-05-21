@@ -92,7 +92,12 @@ export function buildCautionFixture(opts: BuildOptions = {}): string {
   const recipientA = deterministicKeypair(4).publicKey;
   const recipientB = deterministicKeypair(10).publicKey;
   const recipientC = deterministicKeypair(11).publicKey;
-  const unknownProgram = deterministicKeypair(5).publicKey;
+  // seed 50: deliberately NOT in the on-chain registry. We want this
+  // fixture to land in Caution (UNKNOWN_PROGRAM + COMPLEXITY only); if
+  // the program were also registry-flagged, the third medium-severity
+  // flag would push the score over the Danger threshold (60). Seeds
+  // currently used by scripts/seed-registry.ts: 5, 9, 21, 22 — avoid.
+  const unknownProgram = deterministicKeypair(50).publicKey;
 
   const tx = new Transaction({
     feePayer: payer,

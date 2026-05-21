@@ -59,12 +59,17 @@ const SAMPLES: Sample[] = [
     reason: "Pattern matches known wallet drainer signature",
     note: "Linked to /scan DANGER sample",
   },
-  // Matches the CAUTION sample's unknown program (seed=5).
+  // Generic medium-severity demo entry. Previously linked to the /scan
+  // CAUTION sample, but that fixture was updated to use a non-registered
+  // program (so Caution stays in the Caution band; an extra registry hit
+  // would push the score over the Danger threshold). The entry remains
+  // on-chain as historical data and surfaces on /registry as a confirmed
+  // medium-risk attestation.
   {
     seed: 5,
     severity: 2,
-    reason: "Unverified contract used by suspicious aggregator",
-    note: "Linked to /scan CAUTION sample",
+    reason: "Unverified contract used by suspicious aggregator (demo)",
+    note: "Demo medium-severity entry",
   },
   // Pending — surfaces the pending lifecycle on the /registry table.
   {
