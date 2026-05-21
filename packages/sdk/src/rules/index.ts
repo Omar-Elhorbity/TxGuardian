@@ -48,21 +48,43 @@ const RULES: Rule[] = [
 ];
 
 /**
- * Run every rule against the context and collect flags. Defensive: any rule
- * that throws is treated as no-op (rules should not throw, but we never
- * want a single rule failure to block the whole engine).
+ * Run every rule against the context and collect flags. Defensive:
+ *  - any rule that throws is treated as no-op (rules should not throw, but
+ *    we never want a single rule failure to block the whole engine);
+ *  - duplicate flags (same id + same description) are collapsed before
+ *    returning, so a buggy rule that accidentally emits N identical flags
+ *    cannot N-multiply the score in scorer.ts (the scorer sums severity
+ *    weights additively — duplicates would corrupt the verdict).
  */
 export function runRules(ctx: RuleContext): TxRiskFlag[] {
-  const flags: TxRiskFlag[] = [];
+  const raw: TxRiskFlag[] = [];
   for (const rule of RULES) {
     try {
       const result = rule(ctx);
       if (!result) continue;
-      if (Array.isArray(result)) flags.push(...result);
-      else flags.push(result);
+      if (Array.isArray(result)) raw.push(...result);
+      else raw.push(result);
     } catch {
       // Swallow — a single broken rule must not derail the engine.
     }
   }
-  return flags;
+  return dedupeFlags(raw);
+}
+
+/**
+ * Collapse duplicates by (id + description). Two flags with identical user-
+ * visible text are the same finding even if their `evidence` objects differ
+ * slightly. Order is preserved (first occurrence wins) so UI ordering is
+ * stable. This is a safety net — rules should dedupe at their source.
+ */
+function dedupeFlags(flags: TxRiskFlag[]): TxRiskFlag[] {
+  const seen = new Set<string>();
+  const out: TxRiskFlag[] = [];
+  for (const f of flags) {
+    const key = `${f.id}::${f.description}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(f);
+  }
+  return out;
 }
