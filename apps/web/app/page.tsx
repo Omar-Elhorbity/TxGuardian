@@ -107,7 +107,7 @@ export default function HomePage() {
           <Step
             n={2}
             title="Deterministic rule engine"
-            body="Six active rules check for known drainers, unlimited approvals, suspicious destinations, unknown programs, instruction complexity, and unusual fees."
+            body="Six active rules check for known drainers, unlimited approvals, suspicious destinations, unverified programs, instruction complexity, and unusual fees."
           />
           <Step
             n={3}
