@@ -42,15 +42,26 @@ export const detectKnownDrainer: Rule = ({ parsed, onChainAttestations }) => {
     });
   }
 
-  // 2. On-chain confirmed registry feed
+  // 2. On-chain confirmed registry feed.
+  //
+  // IMPORTANT: emit ONE flag per unique flagged program, not per matching
+  // instruction. A transaction that calls the same flagged program in N
+  // instructions must produce a single flag — otherwise the scorer (which
+  // sums severity weights) amplifies the same finding N times and pushes
+  // the verdict beyond the actual risk.
   if (onChainAttestations && onChainAttestations.length > 0) {
     const onchainMap = new Map<string, OnChainAttestation>();
     for (const a of onChainAttestations) {
       if (a.status === "confirmed") onchainMap.set(a.targetProgram, a);
     }
 
+    const flaggedProgramIds = new Set<string>();
     for (const ix of parsed.instructions) {
-      const att = onchainMap.get(ix.programId);
+      if (onchainMap.has(ix.programId)) flaggedProgramIds.add(ix.programId);
+    }
+
+    for (const programId of flaggedProgramIds) {
+      const att = onchainMap.get(programId);
       if (!att) continue;
 
       const severity: Severity =
@@ -63,10 +74,10 @@ export const detectKnownDrainer: Rule = ({ parsed, onChainAttestations }) => {
         // NOTE: `att.reason` is attacker-controlled (anyone can submit). It's
         // intentionally NOT in the description (which the LLM sees). The UI
         // surfaces it from `evidence` with an "untrusted text" label.
-        description: `Program ${shortAddr(ix.programId)} is flagged ${severityLabel(att.severity)} on the TxGuardian on-chain registry.`,
+        description: `Program ${shortAddr(programId)} is flagged ${severityLabel(att.severity)} on the TxGuardian on-chain registry.`,
         evidence: {
           source: "onchain",
-          address: ix.programId,
+          address: programId,
           severity: att.severity,
           attestedBy: att.attestedBy,
           submitter: att.submitter,
