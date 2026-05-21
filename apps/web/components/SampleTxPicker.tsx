@@ -18,7 +18,7 @@ const samples = [
   {
     id: "caution" as const,
     label: "Caution sample",
-    sub: "Unknown program calls",
+    sub: "Unverified program call",
     Icon: AlertTriangle,
     tone: "text-risk-caution",
   },

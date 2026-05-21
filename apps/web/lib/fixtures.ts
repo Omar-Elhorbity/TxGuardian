@@ -188,9 +188,9 @@ export const FIXTURES = {
     build: buildSafeFixture,
   },
   caution: {
-    title: "Caution — unknown program",
+    title: "Caution — unverified program",
     description:
-      "An unknown program call hidden inside a busy transaction of small SOL transfers.",
+      "An unverified program call hidden inside a busy transaction of small SOL transfers.",
     build: buildCautionFixture,
   },
   danger: {
