@@ -108,8 +108,8 @@ export default function OG() {
               marginTop: 20,
             }}
           >
-            Solana browser extension. Verdicts compute on your device, in
-            milliseconds. No keys, no accounts, no telemetry.
+            Solana browser extension. Verdicts compute on your device.
+            No accounts, no API keys, no telemetry.
           </div>
         </div>
 

@@ -47,9 +47,10 @@ test-ledger/
 # Extension build output
 # apps/extension/dist/
 
-# Auto-generated extension download zip — built by the web app's prebuild
-# hook so every Vercel deploy serves a fresh copy.
+# Auto-generated extension download zip + SHA256 — built by the web app's
+# prebuild hook so every Vercel deploy serves a fresh copy.
 apps/web/public/txguardian-extension.zip
+apps/web/public/txguardian-extension.sha256.txt
 
 # Cargo
 **/Cargo.lock.bak

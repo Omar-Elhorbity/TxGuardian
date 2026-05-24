@@ -29,7 +29,7 @@ export default function HomePage() {
           TxGuardian is a Solana browser extension that checks every signing
           request in your browser, before your wallet&apos;s prompt appears.
           The engine runs on your device — your transactions never reach our
-          server. Verdicts in milliseconds. No keys, no accounts, no telemetry.
+          server. No accounts, no API keys, no telemetry.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link href="/extension" className="btn btn-primary">
@@ -120,7 +120,7 @@ export default function HomePage() {
           <Step
             n={4}
             title="Plain-English explanation"
-            body="Optional: bring your own Gemini key for AI prose. We never see the key or the prose. Verdict comes back in milliseconds either way."
+            body="Optional: bring your own Gemini key for AI prose. We never see the key or the prose. Verdict stands either way."
           />
         </ol>
       </section>
@@ -146,8 +146,7 @@ export default function HomePage() {
               <p className="mt-2 max-w-[640px] text-[14px] leading-[1.6] text-text-secondary">
                 The whole engine ships in the extension. When you click sign,
                 we don&apos;t see the transaction — we can&apos;t. Verdicts
-                are computed on your device, against a Solana RPC of your
-                choice, in milliseconds.
+                compute on your device, against a Solana RPC of your choice.
               </p>
               <ul className="mt-4 grid gap-1.5 text-[13px] text-text-secondary md:grid-cols-2">
                 <li className="flex gap-2">
