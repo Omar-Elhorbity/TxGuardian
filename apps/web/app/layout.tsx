@@ -22,23 +22,23 @@ const resolvedSiteUrl = (() => {
 })();
 
 export const metadata: Metadata = {
-  title: "TxGuardian — Pre-sign transaction safety for Solana",
+  title: "TxGuardian — See what you're signing. We don't.",
   description:
-    "Inspect any Solana transaction before you sign. Deterministic risk rules + plain-English AI translation.",
+    "Solana browser extension that checks every signing request in your browser. Verdicts compute on your device — your transactions never leave it.",
   metadataBase: new URL(resolvedSiteUrl),
   authors: [{ name: "Omar Elhorbity" }],
   openGraph: {
-    title: "TxGuardian — Pre-sign transaction safety for Solana",
+    title: "TxGuardian — See what you're signing. We don't.",
     description:
-      "Deterministic risk rules, on-chain attestation registry, plain-English AI translation. Browser extension, engine demo, and TypeScript SDK.",
+      "Solana browser extension. The whole safety engine runs in your browser; we never see your transactions. Optional AI explanation with your own Gemini key.",
     type: "website",
     siteName: "TxGuardian",
   },
   twitter: {
     card: "summary_large_image",
-    title: "TxGuardian — Pre-sign transaction safety for Solana",
+    title: "TxGuardian — See what you're signing. We don't.",
     description:
-      "Deterministic risk rules, on-chain registry, plain-English AI translation. Scanner + extension + SDK.",
+      "Solana browser extension. Checks signing requests in your browser; we never see your transactions.",
   },
   robots: {
     index: true,

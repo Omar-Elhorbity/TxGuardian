@@ -13,7 +13,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 export const alt =
-  "TxGuardian — pre-sign transaction safety for Solana";
+  "TxGuardian — See what you're signing. We don't. Solana browser extension that runs in your browser.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -77,40 +77,39 @@ export default function OG() {
         >
           <div
             style={{
-              fontSize: 72,
+              fontSize: 84,
               fontWeight: 600,
               color: TEXT_PRIMARY,
-              lineHeight: 1.1,
+              lineHeight: 1.05,
               letterSpacing: "-0.02em",
-              maxWidth: 960,
+              maxWidth: 1040,
             }}
           >
-            Know what you&apos;re signing,
+            See what you&apos;re signing.
           </div>
           <div
             style={{
-              fontSize: 72,
+              fontSize: 84,
               fontWeight: 600,
               color: TEXT_SECONDARY,
-              lineHeight: 1.1,
+              lineHeight: 1.05,
               letterSpacing: "-0.02em",
               marginTop: -16,
             }}
           >
-            before you sign it.
+            We don&apos;t.
           </div>
           <div
             style={{
-              fontSize: 28,
+              fontSize: 26,
               color: TEXT_SECONDARY,
               lineHeight: 1.4,
-              maxWidth: 920,
-              marginTop: 12,
+              maxWidth: 980,
+              marginTop: 20,
             }}
           >
-            Pre-sign transaction safety for Solana. Deterministic rules,
-            on-chain registry, AI translator. No signing surface, no key
-            access.
+            Solana browser extension. Verdicts compute on your device, in
+            milliseconds. No keys, no accounts, no telemetry.
           </div>
         </div>
 
@@ -127,13 +126,11 @@ export default function OG() {
             color: TEXT_MUTED,
           }}
         >
-          <span>Browser extension</span>
+          <span>Runs in your browser</span>
           <span>·</span>
-          <span>Engine demo</span>
+          <span>Open source · MIT</span>
           <span>·</span>
-          <span>TypeScript SDK</span>
-          <span>·</span>
-          <span>On-chain registry</span>
+          <span>No telemetry</span>
         </div>
       </div>
     ),
