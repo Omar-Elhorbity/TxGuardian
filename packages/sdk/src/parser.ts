@@ -30,6 +30,13 @@ export class ParseError extends Error {
  *
  * SECURITY: input is treated as fully untrusted. We validate size before and
  * after decoding; we do not interpret any bytes until VersionedTransaction.
+ *
+ * Implementation note: uses the universal Web API `atob()` rather than
+ * Node's `Buffer.from(..., "base64")` so this module runs unchanged in
+ * browser contexts (the extension service worker, in particular). `atob`
+ * is available in every modern browser, every Node 16+ runtime, and every
+ * Cloudflare / Vercel Edge runtime. Throws DOMException on invalid base64;
+ * we wrap that as ParseError so callers see a consistent error type.
  */
 function decodeBase64(input: string): Uint8Array {
   if (typeof input !== "string" || input.length === 0) {
@@ -44,9 +51,13 @@ function decodeBase64(input: string): Uint8Array {
     .replace(/-/g, "+")
     .replace(/_/g, "/");
 
-  let bytes: Buffer;
+  let bytes: Uint8Array;
   try {
-    bytes = Buffer.from(normalized, "base64");
+    const binary = atob(normalized);
+    bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
   } catch (err) {
     throw new ParseError("Could not decode base64 transaction.", err);
   }
@@ -55,7 +66,7 @@ function decodeBase64(input: string): Uint8Array {
       `Decoded transaction has invalid size: ${bytes.length} bytes.`,
     );
   }
-  return new Uint8Array(bytes);
+  return bytes;
 }
 
 /**
