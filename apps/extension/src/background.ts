@@ -67,36 +67,15 @@ console.log("[TxGuardian] service worker booted (local-engine v2)");
 // ─── First-run onboarding ───────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener((details) => {
-  // Fresh install: open the install/onboarding tab.
+  // Fresh install: open the install/onboarding tab + set the welcome
+  // flag so the popup shows the intro panel on first open. Updates are
+  // silent — the popup itself surfaces what changed via the version
+  // string + privacy readout.
   if (details.reason === "install") {
     void chrome.tabs.create({ url: `${HOSTED_SITE_URL}/extension` });
     void chrome.storage.local.set({ [STORAGE_KEY_SHOW_WELCOME]: true });
-    return;
-  }
-  // Update from v1.x → v2.x: the architecture moved local. Show the
-  // welcome panel in the popup so the user knows their privacy posture
-  // changed. We only flip the flag (no auto-opened tab — updates are
-  // already noisy enough on Chrome).
-  if (details.reason === "update") {
-    const previous = details.previousVersion ?? "0.0.0";
-    if (compareSemverMajor(previous, "2.0.0") < 0) {
-      void chrome.storage.local.set({ [STORAGE_KEY_SHOW_WELCOME]: true });
-    }
   }
 });
-
-/**
- * Tiny semver-major comparator. Returns negative if a < b (by major),
- * positive if a > b, zero if equal. We only need major-version granularity
- * for the "is this an upgrade from v1 to v2?" check; full semver isn't
- * worth the dependency.
- */
-function compareSemverMajor(a: string, b: string): number {
-  const ma = parseInt(a.split(".")[0] ?? "0", 10);
-  const mb = parseInt(b.split(".")[0] ?? "0", 10);
-  if (Number.isNaN(ma) || Number.isNaN(mb)) return 0;
-  return ma - mb;
-}
 
 // ─── Message handler ────────────────────────────────────────────────────
 
