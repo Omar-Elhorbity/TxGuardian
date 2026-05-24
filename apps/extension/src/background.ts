@@ -45,6 +45,7 @@ import {
   STORAGE_KEY_LLM_MODEL,
   STORAGE_KEY_MODE,
   STORAGE_KEY_RPC,
+  STORAGE_KEY_SHOW_WELCOME,
   type EngineMode,
 } from "./config";
 
@@ -66,10 +67,36 @@ console.log("[TxGuardian] service worker booted (local-engine v2)");
 // ─── First-run onboarding ───────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener((details) => {
+  // Fresh install: open the install/onboarding tab.
   if (details.reason === "install") {
     void chrome.tabs.create({ url: `${HOSTED_SITE_URL}/extension` });
+    void chrome.storage.local.set({ [STORAGE_KEY_SHOW_WELCOME]: true });
+    return;
+  }
+  // Update from v1.x → v2.x: the architecture moved local. Show the
+  // welcome panel in the popup so the user knows their privacy posture
+  // changed. We only flip the flag (no auto-opened tab — updates are
+  // already noisy enough on Chrome).
+  if (details.reason === "update") {
+    const previous = details.previousVersion ?? "0.0.0";
+    if (compareSemverMajor(previous, "2.0.0") < 0) {
+      void chrome.storage.local.set({ [STORAGE_KEY_SHOW_WELCOME]: true });
+    }
   }
 });
+
+/**
+ * Tiny semver-major comparator. Returns negative if a < b (by major),
+ * positive if a > b, zero if equal. We only need major-version granularity
+ * for the "is this an upgrade from v1 to v2?" check; full semver isn't
+ * worth the dependency.
+ */
+function compareSemverMajor(a: string, b: string): number {
+  const ma = parseInt(a.split(".")[0] ?? "0", 10);
+  const mb = parseInt(b.split(".")[0] ?? "0", 10);
+  if (Number.isNaN(ma) || Number.isNaN(mb)) return 0;
+  return ma - mb;
+}
 
 // ─── Message handler ────────────────────────────────────────────────────
 
@@ -211,6 +238,7 @@ async function analyzeLocally(
       ns: MSG_NAMESPACE,
       id: req.id,
       ok: true,
+      engineMode: "local",
       result: toResultLike(result),
     };
   } catch (err) {
@@ -225,6 +253,7 @@ async function analyzeLocally(
       ns: MSG_NAMESPACE,
       id: req.id,
       ok: false,
+      engineMode: "local",
       error: msg,
     };
   }
@@ -318,6 +347,7 @@ async function analyzeViaHostedAnalyzer(
         ns: MSG_NAMESPACE,
         id: req.id,
         ok: false,
+        engineMode: "hosted",
         error:
           (json as { error?: string } | null)?.error ??
           `Hosted analyzer returned HTTP ${res.status}`,
@@ -328,6 +358,7 @@ async function analyzeViaHostedAnalyzer(
       ns: MSG_NAMESPACE,
       id: req.id,
       ok: true,
+      engineMode: "hosted",
       result: json as TxRiskResultLike,
     };
   } catch (err) {
@@ -336,6 +367,7 @@ async function analyzeViaHostedAnalyzer(
       ns: MSG_NAMESPACE,
       id: req.id,
       ok: false,
+      engineMode: "hosted",
       error: err instanceof Error ? err.message : String(err),
     };
   }

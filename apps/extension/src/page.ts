@@ -45,6 +45,8 @@ interface AnalyzeResponse {
   ok: boolean;
   result?: TxRiskResultLike;
   error?: string;
+  /** Which engine produced this — local (default) or hosted fallback. */
+  engineMode?: "local" | "hosted";
 }
 
 interface TxRiskResultLike {
@@ -270,10 +272,22 @@ console.log("[TxGuardian] dispatched wallet-standard:app-ready");
 
 type Decision = "approve" | "reject";
 
+type EngineMode = "local" | "hosted";
+
 type ModalState =
   | { kind: "loading"; origin: string }
-  | { kind: "verdict"; origin: string; verdict: TxRiskResultLike }
-  | { kind: "unavailable"; origin: string; reason?: string };
+  | {
+      kind: "verdict";
+      origin: string;
+      verdict: TxRiskResultLike;
+      engineMode: EngineMode;
+    }
+  | {
+      kind: "unavailable";
+      origin: string;
+      engineMode: EngineMode;
+      reason?: string;
+    };
 
 async function analyzeAndAwait(txs: AnyTx[]): Promise<Decision> {
   if (txs.length === 0) return "approve";
@@ -295,12 +309,14 @@ async function analyzeAndAwait(txs: AnyTx[]): Promise<Decision> {
       modal.update({
         kind: "unavailable",
         origin: window.location.host,
+        engineMode: outcome.engineMode,
         reason: outcome.error,
       });
     } else {
       modal.update({
         kind: "verdict",
         origin: window.location.host,
+        engineMode: outcome.engineMode,
         verdict: outcome.result,
       });
     }
@@ -344,15 +360,21 @@ function uint8ToB64(bytes: Uint8Array): string {
 }
 
 type AnalysisOutcome =
-  | { ok: true; result: TxRiskResultLike }
-  | { ok: false; error: string };
+  | { ok: true; result: TxRiskResultLike; engineMode: EngineMode }
+  | { ok: false; error: string; engineMode: EngineMode };
 
 function requestAnalysis(base64: string): Promise<AnalysisOutcome> {
   return new Promise((resolve) => {
     const id = newId();
     const timeout = setTimeout(() => {
       window.removeEventListener("message", onMessage);
-      resolve({ ok: false, error: "Analyzer timed out after 15s" });
+      // Timeout has no engineMode signal from the SW; assume local
+      // (the default and most common case). The modal copy adapts.
+      resolve({
+        ok: false,
+        error: "Engine timed out after 15s",
+        engineMode: "local",
+      });
     }, 15_000);
     function onMessage(event: MessageEvent): void {
       if (event.source !== window) return;
@@ -361,10 +383,18 @@ function requestAnalysis(base64: string): Promise<AnalysisOutcome> {
       if (msg.type !== "ANALYZE_RESPONSE" || msg.id !== id) return;
       clearTimeout(timeout);
       window.removeEventListener("message", onMessage);
+      // engineMode is set by the SW; fall back to "local" if a legacy
+      // SW response didn't include it (defensive — should never happen
+      // with a v2 SW, but cheap to be safe).
+      const engineMode: EngineMode = msg.engineMode ?? "local";
       if (msg.ok && msg.result) {
-        resolve({ ok: true, result: msg.result });
+        resolve({ ok: true, result: msg.result, engineMode });
       } else {
-        resolve({ ok: false, error: msg.error ?? "Unknown analyzer error" });
+        resolve({
+          ok: false,
+          error: msg.error ?? "Unknown engine error",
+          engineMode,
+        });
       }
     }
     window.addEventListener("message", onMessage);
@@ -516,6 +546,9 @@ const ICON_ALERT_TRIANGLE = `<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const ICON_SHIELD_X = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m14.5 9.5-5 5"/><path d="m9.5 9.5 5 5"/></svg>`;
 const ICON_INFO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
 const ICON_CHEVRON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+const ICON_SPARKLES = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>`;
+const ICON_DEVICE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>`;
+const ICON_CLOUD = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`;
 
 function levelIcon(l: "safe" | "caution" | "danger"): string {
   if (l === "safe") return ICON_SHIELD_CHECK;
@@ -528,10 +561,33 @@ function renderCard(state: ModalState): string {
     case "loading":
       return renderLoading(state.origin);
     case "verdict":
-      return renderVerdict(state.origin, state.verdict);
+      return renderVerdict(state.origin, state.verdict, state.engineMode);
     case "unavailable":
-      return renderUnavailable(state.origin, state.reason);
+      return renderUnavailable(
+        state.origin,
+        state.engineMode,
+        state.reason,
+      );
   }
+}
+
+/**
+ * Tiny "where the verdict came from" badge for the modal header. Local =
+ * accent (default, the version users should prefer); Hosted = info color
+ * (correct but explicitly contacting our server). Visible on every
+ * verdict and on the unavailable state.
+ */
+function engineBadgeHTML(mode: EngineMode): string {
+  if (mode === "local") {
+    return `<div class="engine-badge engine-badge-local" title="Verdict was computed on your device by the extension's bundled engine. TxGuardian's server was not contacted.">
+      <span class="engine-badge-icon">${ICON_DEVICE}</span>
+      <span>Verdict computed on your device</span>
+    </div>`;
+  }
+  return `<div class="engine-badge engine-badge-hosted" title="Verdict was computed by TxGuardian's hosted /api/analyze endpoint. Switch to Local engine in the popup to compute on-device.">
+    <span class="engine-badge-icon">${ICON_CLOUD}</span>
+    <span>Verdict from hosted analyzer</span>
+  </div>`;
 }
 
 function renderHeader(origin: string): string {
@@ -564,21 +620,46 @@ function renderLoading(origin: string): string {
   `;
 }
 
-function renderUnavailable(origin: string, reason?: string): string {
+function renderUnavailable(
+  origin: string,
+  engineMode: EngineMode,
+  reason?: string,
+): string {
   const reasonHTML = reason
     ? `<p class="explanation" style="margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; opacity: 0.7;">
          ${escapeHTML(reason)}
        </p>`
     : "";
+
+  // Mode-specific framing. In local mode the engine itself is alive — the
+  // failure is almost always an RPC issue (registry lookup or simulation
+  // timing out). In hosted mode the failure is on our analyzer, which the
+  // user can route around by switching to local in the popup.
+  const heading =
+    engineMode === "local"
+      ? "Engine couldn't complete the check"
+      : "Hosted analyzer unavailable";
+
+  const subtitle =
+    engineMode === "local"
+      ? "The local engine started fine but couldn't finish — usually a Solana RPC problem (timeout, rate limit, or wrong cluster)."
+      : "TxGuardian's hosted analyzer didn't respond.";
+
+  const tip =
+    engineMode === "local"
+      ? `Tip: open the TxGuardian icon in your toolbar and check the Solana RPC. The default devnet RPC is rate-limited; if you see this often, point at Helius / QuickNode / Triton / Alchemy.`
+      : `Tip: open the TxGuardian icon in your toolbar and switch to <strong>Local engine</strong> — verdicts compute on your device with no server dependency.`;
+
   return `
     <div class="card" role="dialog" aria-modal="true">
       ${renderHeader(origin)}
+      ${engineBadgeHTML(engineMode)}
       <div class="verdict level-caution">
         <div class="verdict-icon">${ICON_ALERT_TRIANGLE}</div>
         <div class="verdict-text">
-          <div class="verdict-label">Analyzer unavailable</div>
+          <div class="verdict-label">${heading}</div>
           <div class="verdict-meta">
-            <span>TxGuardian couldn't get a verdict for this transaction.</span>
+            <span>${subtitle}</span>
           </div>
         </div>
       </div>
@@ -587,9 +668,7 @@ function renderUnavailable(origin: string, reason?: string): string {
           The wallet's own confirmation will still appear next. Proceed only if you trust this dApp and the transaction it's asking you to sign.
         </p>
         ${reasonHTML}
-        <p class="explanation" style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-          Tip: open the TxGuardian extension icon in your toolbar to verify or override the analyzer endpoint.
-        </p>
+        <p class="explanation" style="margin-top: 10px; font-size: 12px; opacity: 0.8;">${tip}</p>
       </div>
       <footer>
         <button class="btn primary" data-action="reject" data-action-also="primary">Reject</button>
@@ -599,7 +678,11 @@ function renderUnavailable(origin: string, reason?: string): string {
   `;
 }
 
-function renderVerdict(origin: string, v: TxRiskResultLike): string {
+function renderVerdict(
+  origin: string,
+  v: TxRiskResultLike,
+  engineMode: EngineMode,
+): string {
   const isDanger = v.riskLevel === "danger";
   const isSafe = v.riskLevel === "safe";
 
@@ -614,10 +697,21 @@ function renderVerdict(origin: string, v: TxRiskResultLike): string {
   const approvePrimaryAttr = !isDanger ? "data-action-also='primary'" : "";
   const rejectPrimaryAttr = isDanger ? "data-action-also='primary'" : "";
 
+  // AI provenance badge — appears under the prose when the LLM produced
+  // an explanation. Makes the trust boundary visible: the verdict above
+  // is deterministic; the prose below is decorative AI output.
+  const aiBadgeHTML = v.explanation
+    ? `<div class="ai-badge" title="The explanation above was generated by Google Gemini using the API key you supplied in the extension popup. The verdict itself is computed deterministically and is independent of this prose.">
+        <span class="ai-badge-icon">${ICON_SPARKLES}</span>
+        AI explanation · Google Gemini · your key
+      </div>`
+    : "";
+
   const explanationHTML = v.explanation
     ? `<section class="block">
         <div class="block-label">Plain-English summary</div>
         <p class="explanation">${escapeHTML(v.explanation)}</p>
+        ${aiBadgeHTML}
       </section>`
     : "";
 
@@ -690,6 +784,7 @@ function renderVerdict(origin: string, v: TxRiskResultLike): string {
   return `
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="txg-verdict-label">
       ${renderHeader(origin)}
+      ${engineBadgeHTML(engineMode)}
 
       <div class="verdict level-${escapeHTML(v.riskLevel)}">
         <div class="verdict-icon">${levelIcon(v.riskLevel)}</div>
@@ -947,6 +1042,63 @@ header {
   place-items: center;
 }
 .affirmation-icon svg { width: 18px; height: 18px; }
+
+/* ─── Engine provenance badge (rendered above the verdict block) ─── */
+.engine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 20px 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: 1px solid;
+  width: fit-content;
+}
+.engine-badge-icon {
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+}
+.engine-badge-icon svg { width: 12px; height: 12px; }
+.engine-badge-local {
+  color: #d6c79b;
+  background: rgba(214, 199, 155, 0.08);
+  border-color: rgba(214, 199, 155, 0.25);
+}
+.engine-badge-hosted {
+  color: #94b7d6;
+  background: rgba(148, 183, 214, 0.08);
+  border-color: rgba(148, 183, 214, 0.25);
+}
+
+/* ─── AI provenance badge (under the LLM-generated explanation) ─── */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #a8adb8;
+  background: rgba(168, 173, 184, 0.06);
+  border: 1px solid rgba(168, 173, 184, 0.16);
+  width: fit-content;
+}
+.ai-badge-icon {
+  width: 11px;
+  height: 11px;
+  display: grid;
+  place-items: center;
+  color: #d6c79b;
+}
+.ai-badge-icon svg { width: 11px; height: 11px; }
 
 .block-label {
   font-size: 11px;
