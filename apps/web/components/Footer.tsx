@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-[1120px] flex-col gap-4 px-6 py-8 text-[12px] text-text-muted md:flex-row md:items-center md:justify-between">
         <div>
-          TxGuardian — pre-sign safety for Solana. Open SDK + scanner.
+          TxGuardian — Solana safety in your browser. Open source, MIT.
         </div>
         <ul className="flex items-center gap-5">
           <li>

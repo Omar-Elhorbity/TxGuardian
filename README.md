@@ -1,21 +1,32 @@
 # TxGuardian
 
-A browser extension that intercepts every Solana signing request and shows a pre-sign safety verdict before your wallet's prompt appears.
+**See what you're signing. We don't.**
 
-TxGuardian closes the gap between **what a wallet preview says** and **what a transaction's instructions actually authorize**. A deterministic rule engine — backed by a Solana program holding a community-curated drainer/risk feed — decides what's risky. An AI translator turns the verdict into plain English. No signing surface, no key access.
+A Solana browser extension that checks every signing request in your browser before your wallet's prompt appears. The whole verdict engine ships inside the extension — your transactions never leave your browser. Deterministic rules decide what's risky; an optional AI translator (your Gemini key, called directly from your browser) turns the verdict into plain English.
+
+## Privacy posture
+
+| Configuration | TxGuardian server | Your RPC | Google (Gemini) |
+|---|---|---|---|
+| **Extension default** | Never contacted | Sees the tx for simulation + registry lookup | Never contacted |
+| Extension + AI translator (your key) | Never contacted | (as above) | Sees decoded summaries (your key) |
+| Extension hosted fallback (opt-in) | Sees the full tx | (via our server) | (via our server, our key) |
+| Web demo at `/scan` | Sees the full tx | (via our server) | (via our server, our key) |
+
+The default extension setup contacts neither our server nor any LLM provider. Verdicts compute on your device against a Solana RPC of your choice. Full breakdown at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
 
 ## Live
 
-- **Browser extension:** [tx-guardian-web.vercel.app/extension](https://tx-guardian-web.vercel.app/extension) — one-click download
-- **Engine demo:** [tx-guardian-web.vercel.app/scan](https://tx-guardian-web.vercel.app/scan) — try the engine on any Solana signature or base64 transaction
+- **Browser extension:** [tx-guardian-web.vercel.app/extension](https://tx-guardian-web.vercel.app/extension) — one-click download (~50 KB zip)
+- **Engine demo:** [tx-guardian-web.vercel.app/scan](https://tx-guardian-web.vercel.app/scan) — try the engine on any Solana signature or base64 transaction (runs on our server, since the web doesn't have an extension)
 - **On-chain registry (devnet):** [`Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7`](https://explorer.solana.com/address/Dt6ccUKifBKegcxKGvgiHfyCDrJFeRwMmhvi7eCbFVS7?cluster=devnet)
 
 ## What ships
 
-- **Browser extension** (`apps/extension`) — Manifest V3 for Chrome / Brave / Arc / Edge. The primary surface. Sits between every Solana dApp and your wallet, intercepts every signing request, shows the verdict overlay before your wallet's prompt.
-- **TypeScript SDK** (`packages/sdk`) — `@txguardian/sdk`. The same engine the extension uses, packaged as a one-function library. For wallets, dApps, and signing services that want to embed pre-sign checks directly.
-- **On-chain registry** (`programs/txguardian-registry`) — Anchor program (Rust) deployed on Solana devnet. The decentralized drainer/risk feed. Anyone can submit, an admin keypair attests, the SDK reads at scan time.
-- **Engine demo** (`apps/web/scan`) — public web demo for trying the engine on any transaction. Accepts a Solana signature (fetched from RPC) or a raw base64 transaction. Useful for post-hoc analysis and for evaluating the engine without installing anything.
+- **Browser extension** (`apps/extension`) — Manifest V3 for Chrome / Brave / Arc / Edge. The product. Bundles the engine in its service worker. ~134 KB gzipped.
+- **TypeScript SDK** (`packages/sdk`) — `@txguardian/sdk`. The engine, runtime-agnostic — browser, Node, edge. The extension imports it; so does the hosted demo route; so can wallets, dApps, and signing services.
+- **On-chain registry** (`programs/txguardian-registry`) — Anchor program (Rust) deployed on Solana devnet. Decentralized drainer + verified-program feeds. Anyone can submit; an admin keypair attests; the engine reads both at scan time.
+- **Engine demo** (`apps/web/scan`) — public web demo for evaluating the engine without installing. Server-side because there's no extension on the page.
 
 ## On-chain registry
 
@@ -30,18 +41,36 @@ TxGuardian closes the gap between **what a wallet preview says** and **what a tr
 ## Architecture
 
 ```
-Extension          ─┐
-                    ├── HTTP /api/analyze ──── @txguardian/sdk  (the engine)
-Web demo (/scan)   ─┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                               ├─ Decoder    (instruction summaries; memo stripped)
-                                               ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                               ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                               ├─ Rules      (deterministic — source of truth) ←┘
-                                               ├─ Scorer     (severity → 0–100 → recommendation)
-                                               └─ Translator (Gemini 2.5 Flash — never decides risk)
+EXTENSION  (the product — bundles the entire engine)
+┌──────────────────────────────────────────────────────────────────┐
+│  page.ts (MAIN world)                                            │
+│    intercepts signTransaction → serializes → postMessage         │
+│           ↓                                                      │
+│  service worker                                                  │
+│    runs @txguardian/sdk LOCALLY:                                │
+│      Parser    (legacy + v0 + ALT + Token-2022)                  │
+│      Decoder   (instruction summaries; memo stripped)            │
+│      Simulator (your RPC — sigVerify=false)                      │
+│      Registry  (your RPC — drainer + verified feeds)             │
+│      Rules     (deterministic — source of truth)                 │
+│      Scorer    (severity → 0–100 → recommendation)               │
+│    ┌─ optional: Translator (Google Gemini · YOUR key) ────────┐  │
+│    │  TxGuardian server NEVER involved in the LLM call        │  │
+│    └─────────────────────────────────────────────────────────────┘  │
+│           ↓                                                      │
+│  Shadow-DOM modal · user decides · wallet has the final say     │
+└──────────────────────────────────────────────────────────────────┘
+
+WEB SITE  (demo + docs — optional convenience)
+┌──────────────────────────────────────────────────────────────────┐
+│  /scan, /playground  ──→  POST /api/analyze  (same engine, our   │
+│  RPC, our LLM key — for users without a personal setup)          │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-Both client surfaces (extension, web demo) speak HTTP to the analyzer route so the LLM key and the RPC URL stay server-side. The engine itself is `@txguardian/sdk`, a TypeScript package inside this monorepo — not published to npm yet, so external integrators currently need to clone the repo and import it as a workspace dependency (`workspace:*`). Publishing to npm is a one-line release away when the SDK API surface is locked.
+The killer property: with the engine running on the user's device, the verdict is something we *can't* influence. It's computed in code the user can audit and that matches a SHA256 published next to the download. The optional AI prose uses the user's own Gemini key and goes directly to Google — TxGuardian never sees the prose, the key, or the transaction.
+
+The engine itself is `@txguardian/sdk`, a TypeScript package inside this monorepo — runtime-agnostic (browser, Node, edge) since v1. Not published to npm yet, so external integrators currently need to clone the repo and import it as a workspace dependency (`workspace:*`). Publishing is a one-line release away.
 
 The deterministic engine is the source of truth on **risk**. The LLM only translates — it cannot raise, lower, or invent flags, and the recommendation is enum-locked to the deterministic level.
 
