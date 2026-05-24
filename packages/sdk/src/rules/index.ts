@@ -5,7 +5,10 @@ import type {
   TxRiskFlag,
 } from "../types";
 import type { DecodedTokenOp } from "../decode";
-import type { OnChainAttestation } from "../registry";
+import type {
+  OnChainAttestation,
+  VerifiedAttestation,
+} from "../registry";
 import { detectKnownDrainer } from "./drainer";
 import { detectUnknownPrograms } from "./unknown";
 import { detectComplexity } from "./complexity";
@@ -21,11 +24,18 @@ export interface RuleContext {
   /** Optional signer pubkey (base58) for context-aware checks. */
   signer?: string;
   /**
-   * Confirmed on-chain attestations from the TxGuardian registry program,
+   * Confirmed on-chain DRAINER attestations from the registry program,
    * fetched best-effort in full mode. Empty array (not undefined) means
    * "fetched and got nothing or fetch failed." Rules treat both the same way.
    */
   onChainAttestations?: OnChainAttestation[];
+  /**
+   * Confirmed on-chain VERIFIED-program attestations from the registry
+   * program. Programs in this set are positively reviewed as safe by the
+   * curator — detectUnknownPrograms skips them so legitimate new programs
+   * curated by the community don't trigger a flag.
+   */
+  verifiedAttestations?: VerifiedAttestation[];
 }
 
 export type Rule = (ctx: RuleContext) => TxRiskFlag | TxRiskFlag[] | null;

@@ -59,4 +59,36 @@ pub mod txguardian_registry {
     pub fn update_admin(ctx: Context<UpdateAdmin>, new_admin: Pubkey) -> Result<()> {
         instructions::update_admin::handler(ctx, new_admin)
     }
+
+    // ─── Verified-program (positive attestation) flow ───────────────────
+    // Mirrors the drainer flow above but populates a separate set of
+    // accounts (PDA seed = [b"verified", target.as_ref()]). The SDK reads
+    // these via fetchVerifiedAttestations and the detectUnknownPrograms
+    // rule uses them to suppress UNKNOWN_PROGRAM flags for programs the
+    // community has positively reviewed.
+
+    /// Submit a program for positive review. Anyone can call.
+    pub fn submit_verified(
+        ctx: Context<SubmitVerified>,
+        target_program: Pubkey,
+        note: [u8; 64],
+    ) -> Result<()> {
+        instructions::submit_verified::handler(ctx, target_program, note)
+    }
+
+    /// Curator-only. Confirm a verified attestation (pending → confirmed).
+    pub fn attest_verified(
+        ctx: Context<AttestVerified>,
+        target_program: Pubkey,
+    ) -> Result<()> {
+        instructions::attest_verified::handler(ctx, target_program)
+    }
+
+    /// Curator-only. Revoke a verified attestation (any → revoked).
+    pub fn revoke_verified(
+        ctx: Context<RevokeVerified>,
+        target_program: Pubkey,
+    ) -> Result<()> {
+        instructions::revoke_verified::handler(ctx, target_program)
+    }
 }
