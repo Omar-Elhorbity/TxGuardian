@@ -1,10 +1,5 @@
-import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
-import { z } from "zod";
-import type { DecodedInstruction, RiskLevel, TxRiskFlag } from "./types";
-
 /**
- * AI Explainer — TRANSLATOR ONLY. The LLM receives the deterministic flags
+ * AI translator — TRANSLATOR ONLY. The LLM receives the deterministic flags
  * and decoded instructions, then produces plain-English prose. It cannot:
  *   - invent or remove risks (flags come from the rule engine)
  *   - choose the recommendation (locked to riskLevel by the scorer)
@@ -14,7 +9,19 @@ import type { DecodedInstruction, RiskLevel, TxRiskFlag } from "./types";
  * already strips attacker-controlled text (memo content, etc.). The LLM
  * never sees raw on-chain strings. The system prompt also instructs the
  * model not to quote any user-controlled text verbatim.
+ *
+ * THIS MODULE WORKS IN ANY RUNTIME. The API key is a required parameter
+ * (not read from `process.env`), so the same code path serves:
+ *   - the hosted /api/analyze route on Vercel (reads from env, passes in)
+ *   - the browser extension service worker (reads from chrome.storage.session,
+ *     passes in) — the user's own key, never leaves their machine except
+ *     to go directly to Google
  */
+
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { generateObject } from "ai";
+import { z } from "zod";
+import type { DecodedInstruction, RiskLevel, TxRiskFlag } from "../types";
 
 const ExplanationSchema = z.object({
   headline: z.string().max(100),
@@ -39,13 +46,24 @@ RULES:
 10. If an instruction line is marked [×N] where N > 1, the same instruction repeats N times. Mention it ONCE in whatThisDoes with the count (e.g. "Interact with an unknown program 5 times"). Never list the same bullet N separate times.
 11. Output JSON only, matching the schema. No prose outside the structured object.`;
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+export const DEFAULT_MODEL = "gemini-2.5-flash";
 
-export interface ExplainInput {
+export interface TranslateInput {
+  /** Deterministic verdict label — passed to the model as context only. */
   riskLevel: RiskLevel;
+  /** Deterministic score 0–100 — context only. */
   score: number;
+  /** Flags raised by the rule engine — the SOURCE OF TRUTH. */
   flags: TxRiskFlag[];
+  /** Decoded instruction summaries — what the model paraphrases. */
   decoded: DecodedInstruction[];
+  /**
+   * User's Gemini API key. REQUIRED. Server callers pass the env value;
+   * extension callers pass the value from chrome.storage.session. Never
+   * persist this in any module-level state.
+   */
+  apiKey: string;
+  /** Optional model override. Defaults to gemini-2.5-flash. */
   model?: string;
 }
 
@@ -86,7 +104,7 @@ function collapseInstructions(
   return order.map((k) => map.get(k)!);
 }
 
-function buildUserPrompt(input: ExplainInput): string {
+function buildUserPrompt(input: TranslateInput): string {
   const flagsBlock =
     input.flags.length === 0
       ? "(no flags raised)"
@@ -122,16 +140,19 @@ function buildUserPrompt(input: ExplainInput): string {
 }
 
 /**
- * One-shot LLM call. Throws on misconfiguration (missing API key) or
- * model errors. Caller should catch and degrade gracefully — the
- * deterministic verdict is always valid even without explanation.
+ * One-shot LLM call. Throws on missing API key, network error, or model
+ * error. Callers should catch and degrade gracefully — the deterministic
+ * verdict is always valid even without explanation.
  */
-export async function explain(input: ExplainInput): Promise<Explanation> {
-  const modelId =
-    input.model ?? process.env.TXGUARDIAN_MODEL ?? DEFAULT_MODEL;
+export async function translate(input: TranslateInput): Promise<Explanation> {
+  if (!input.apiKey || input.apiKey.trim().length === 0) {
+    throw new Error("apiKey is required");
+  }
+  const provider = createGoogleGenerativeAI({ apiKey: input.apiKey });
+  const modelId = input.model ?? DEFAULT_MODEL;
 
   const { object } = await generateObject({
-    model: google(modelId),
+    model: provider(modelId),
     schema: ExplanationSchema,
     system: SYSTEM_PROMPT,
     prompt: buildUserPrompt(input),
@@ -141,13 +162,18 @@ export async function explain(input: ExplainInput): Promise<Explanation> {
 }
 
 /**
- * In-memory cache keyed by the deterministic inputs. Same flags + same
- * decoded instructions → same explanation. Survives the warm-window of
- * a serverless function. Cold starts regenerate, which is fine.
+ * In-memory cache keyed by the DETERMINISTIC inputs only. Same flags + same
+ * decoded instructions → same explanation. The API key is NOT in the cache
+ * key (explanations don't vary by user; including the key would double the
+ * memory and could be a side-channel leak in shared-process settings).
+ *
+ * Survives the warm window of a serverless function. Cold starts regenerate.
+ * In the extension service worker, the cache lives for the SW lifetime
+ * (which is short-lived but reused across signing requests in a burst).
  */
 const cache = new Map<string, Explanation>();
 
-function cacheKey(input: ExplainInput): string {
+function cacheKey(input: TranslateInput): string {
   const flagIds = input.flags
     .map((f) => f.id)
     .sort()
@@ -156,13 +182,13 @@ function cacheKey(input: ExplainInput): string {
   return `${input.riskLevel}:${input.score}:${flagIds}:${ixSummaries}:${input.model ?? "default"}`;
 }
 
-export async function explainCached(
-  input: ExplainInput,
+export async function translateCached(
+  input: TranslateInput,
 ): Promise<Explanation> {
   const key = cacheKey(input);
   const hit = cache.get(key);
   if (hit) return hit;
-  const fresh = await explain(input);
+  const fresh = await translate(input);
   cache.set(key, fresh);
   // Bound cache to last 200 entries to avoid unbounded growth.
   if (cache.size > 200) {

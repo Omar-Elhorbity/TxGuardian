@@ -116,6 +116,15 @@ export async function POST(request: Request) {
 
   const resolvedMode = mode === "full" ? "full" : "fast";
   const connection = getConnection();
+  // In full mode, pass the server-side Gemini key into the SDK so the
+  // translator runs. Fast mode skips the LLM entirely (no key needed).
+  // The SDK no longer reads `process.env` itself — we pass the key in
+  // explicitly so the same SDK code path works in the extension service
+  // worker (where the user supplies their own key).
+  const aiApiKey =
+    resolvedMode === "full"
+      ? process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      : undefined;
 
   // Branch 1: signature → fetch from RPC, serialize message back to base64.
   if (looksLikeSignature(rawInput)) {
@@ -171,6 +180,7 @@ export async function POST(request: Request) {
         transaction: base64,
         connection,
         mode: resolvedMode,
+        ...(aiApiKey ? { aiApiKey } : {}),
       });
       return NextResponse.json(
         jsonSafe({ ...result, provenance }),
@@ -201,6 +211,7 @@ export async function POST(request: Request) {
       transaction: rawInput,
       connection,
       mode: resolvedMode,
+      ...(aiApiKey ? { aiApiKey } : {}),
     });
 
     return NextResponse.json(jsonSafe(result), {

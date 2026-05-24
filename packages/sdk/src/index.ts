@@ -4,7 +4,7 @@ import { decodeAll } from "./decode";
 import { simulateSafely } from "./simulate";
 import { runRules } from "./rules/index";
 import { scoreFlags } from "./scorer";
-import { explainCached } from "./explain";
+import { translateCached } from "./translator";
 import {
   fetchConfirmedAttestations,
   fetchVerifiedAttestations,
@@ -18,11 +18,17 @@ import {
  *
  * Mode:
  *   - "fast" (default): rules only — sub-200ms typical. No LLM, no simulation.
- *   - "full": rules + simulation + AI translator. ~1–2s typical.
+ *   - "full": rules + simulation. ~1–2s typical.
  *
  * The deterministic verdict (riskLevel, score, flags, recommendation) is
- * ALWAYS valid even if the AI step fails. AI failures degrade to empty
- * `explanation` and `whatThisDoes` rather than throwing.
+ * ALWAYS valid. The AI explanation is OPTIONAL — pass `aiApiKey` to enable
+ * it (requires a Google Gemini API key the caller supplies; the SDK never
+ * reads env vars). With no key, `explanation` and `whatThisDoes` are
+ * returned as empty strings/arrays and the verdict still stands.
+ *
+ * Design intent: keep the deterministic engine independent of any external
+ * trust. The caller decides whether to invoke the LLM at all, and with
+ * whose credentials.
  */
 export async function analyze(
   options: AnalyzeOptions,
@@ -75,13 +81,18 @@ export async function analyze(
 
   let explanation = "";
   let whatThisDoes: string[] = [];
-  if (mode === "full") {
+  // AI translation is independent of mode. Even in "fast" mode a caller can
+  // provide a key and get the explanation; even in "full" mode a caller
+  // without a key skips it cleanly. The deterministic engine never depends
+  // on the LLM step succeeding.
+  if (options.aiApiKey && options.aiApiKey.trim().length > 0) {
     try {
-      const ai = await explainCached({
+      const ai = await translateCached({
         riskLevel,
         score,
         flags,
         decoded,
+        apiKey: options.aiApiKey,
         ...(options.model ? { model: options.model } : {}),
       });
       explanation = ai.explanation;
@@ -126,6 +137,16 @@ export { parseTransaction, ParseError, toVersionedTransaction } from "./parser";
 export { decodeAll, decodeInstruction } from "./decode";
 export { runRules } from "./rules/index";
 export { scoreFlags } from "./scorer";
+
+// Translator — optional LLM module. Importable separately so the
+// deterministic engine can be used without bundling @ai-sdk/google.
+export {
+  translate,
+  translateCached,
+  DEFAULT_MODEL,
+  type TranslateInput,
+  type Explanation,
+} from "./translator";
 export {
   KNOWN_PROGRAMS,
   KNOWN_DRAINERS,
