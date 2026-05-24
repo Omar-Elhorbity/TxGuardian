@@ -54,8 +54,8 @@ export default function ExtensionPage() {
         <p className="mt-5 max-w-[600px] text-[15px] leading-[1.65] text-text-secondary">
           The whole verdict engine ships inside the extension. When a dApp
           asks your wallet to sign, the check happens in your browser —
-          your transactions never reach our server. Verdicts in
-          milliseconds. The wallet still has the final say.
+          your transactions never reach our server. The wallet still has
+          the final say.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <a
