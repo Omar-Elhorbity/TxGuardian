@@ -71,9 +71,26 @@ export interface AnalyzeOptions {
   connection: Connection;
   /** Optional signer pubkey for context-aware checks. */
   publicKey?: PublicKey;
-  /** "fast" = rules only (no LLM, no simulation); "full" = rules + simulation + AI explainer. */
+  /**
+   * Engine depth:
+   *   "fast" = rules only (no simulation, no on-chain registry lookup).
+   *   "full" = rules + simulation + on-chain registry (drainer + verified) lookups.
+   * AI explanation is independent of mode — supply `aiApiKey` to enable it.
+   */
   mode?: "fast" | "full";
-  /** Optional override for which model to use in full mode. */
+  /**
+   * Google Gemini API key. When provided, the SDK calls the LLM translator
+   * to produce a plain-English explanation. When omitted, `explanation`
+   * and `whatThisDoes` come back empty and the deterministic verdict
+   * stands on its own.
+   *
+   * Caller-supplied so the SDK never reads `process.env` — works
+   * identically in Node servers, browsers, edge runtimes, and Chrome
+   * extension service workers. The caller chooses whose credentials
+   * to spend.
+   */
+  aiApiKey?: string;
+  /** Optional override for which Gemini model to use. Defaults to gemini-2.5-flash. */
   model?: string;
 }
 

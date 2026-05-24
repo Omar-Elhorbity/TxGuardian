@@ -64,6 +64,8 @@ export default defineManifest({
     "https://*.rpcpool.com/*",
     "https://*.alchemy.com/*",
     "https://*.vercel.app/*",
+    // BYO Gemini key — direct browser-to-Google call, never via our server.
+    "https://generativelanguage.googleapis.com/*",
   ],
   background: {
     service_worker: "src/background.ts",

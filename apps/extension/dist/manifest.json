@@ -22,7 +22,8 @@
     "https://*.quiknode.pro/*",
     "https://*.rpcpool.com/*",
     "https://*.alchemy.com/*",
-    "https://*.vercel.app/*"
+    "https://*.vercel.app/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "service-worker-loader.js",

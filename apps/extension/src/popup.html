@@ -29,7 +29,7 @@
         padding: 0;
       }
       body {
-        width: 320px;
+        width: 360px;
         background: var(--bg);
         color: var(--text-primary);
         font-family:
@@ -49,11 +49,8 @@
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: var(--text-muted);
-        transition: background 0.15s ease;
-      }
-      .header .dot.ok {
         background: var(--good);
+        transition: background 0.15s ease;
       }
       .header .dot.err {
         background: var(--bad);
@@ -64,13 +61,21 @@
         font-weight: 600;
         letter-spacing: 0.01em;
       }
-      .header .status {
+      .header .meta {
         margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .version,
+      .status {
         font-size: 11px;
         color: var(--text-muted);
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
       }
       .section {
-        padding: 12px 16px;
+        padding: 14px 16px;
       }
       .section + .section {
         border-top: 1px solid var(--border);
@@ -80,13 +85,16 @@
         text-transform: uppercase;
         letter-spacing: 0.12em;
         color: var(--text-muted);
-        margin: 0 0 6px;
+        margin: 0 0 8px;
+        font-weight: 600;
       }
       .row {
         display: flex;
         gap: 6px;
       }
-      input[type="url"] {
+      input[type="url"],
+      input[type="password"],
+      select {
         flex: 1 1 auto;
         min-width: 0;
         padding: 8px 10px;
@@ -99,11 +107,13 @@
         font-size: 12px;
         outline: none;
       }
-      input[type="url"]:focus {
+      input[type="url"]:focus,
+      input[type="password"]:focus,
+      select:focus {
         border-color: var(--border-strong);
       }
       button {
-        padding: 8px 12px;
+        padding: 7px 12px;
         background: var(--surface-2);
         border: 1px solid var(--border);
         border-radius: 6px;
@@ -144,12 +154,34 @@
         margin: 8px 0 0;
         font-size: 11px;
         color: var(--text-muted);
+        line-height: 1.5;
+      }
+      .hint a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .hint a:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+      }
+      .test-result {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
         line-height: 1.45;
+      }
+      .test-result.ok {
+        color: var(--good);
+      }
+      .test-result.err {
+        color: var(--bad);
       }
       .links {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 14px;
         font-size: 11px;
       }
       .links a {
@@ -160,29 +192,70 @@
         color: var(--accent-hover);
         text-decoration: underline;
       }
-      .saved {
-        font-size: 11px;
-        color: var(--good);
-        margin-left: auto;
+
+      /* Mode radio group */
+      .modes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
       }
-      .test-result {
-        margin-top: 8px;
-        font-size: 11px;
-        color: var(--text-secondary);
-        font-family:
-          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      .mode-card {
+        display: block;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease;
       }
-      .test-result.ok {
-        color: var(--good);
+      .mode-card:hover {
+        background: var(--surface);
       }
-      .test-result.err {
-        color: var(--bad);
+      .mode-card.selected {
+        border-color: var(--accent);
+        background: var(--surface);
       }
-      .version {
+      .mode-card input {
+        display: none;
+      }
+      .mode-card .name {
+        font-size: 12px;
+        font-weight: 600;
+        margin: 0 0 2px;
+      }
+      .mode-card .sub {
         font-size: 10px;
         color: var(--text-muted);
-        font-family:
-          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        line-height: 1.4;
+      }
+      .mode-card.selected .name {
+        color: var(--accent);
+      }
+
+      /* AI translator toggle row */
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .toggle-row input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+        margin: 0;
+        cursor: pointer;
+        accent-color: var(--accent);
+      }
+      .toggle-row label {
+        font-size: 12px;
+        cursor: pointer;
+        flex: 1;
+      }
+
+      /* Hide a section when not applicable to current mode */
+      [hidden] {
+        display: none !important;
       }
     </style>
   </head>
@@ -190,12 +263,67 @@
     <div class="header">
       <span class="dot" id="status-dot" aria-hidden="true"></span>
       <h1>TxGuardian</h1>
-      <span class="version" id="version">v—</span>
-      <span class="status" id="status-text">checking…</span>
+      <div class="meta">
+        <span class="version" id="version">v—</span>
+        <span class="status" id="status-text">ready</span>
+      </div>
     </div>
 
+    <!-- ─── Engine mode ───────────────────────────────────────── -->
     <div class="section">
-      <p class="label">Analyzer endpoint</p>
+      <p class="label">Engine</p>
+      <div class="modes" role="radiogroup" aria-label="Engine mode">
+        <label class="mode-card" id="mode-local-card">
+          <input
+            type="radio"
+            name="mode"
+            value="local"
+            id="mode-local"
+            checked
+          />
+          <div class="name">Local engine</div>
+          <div class="sub">
+            Verdicts compute on your device. TxGuardian server: not contacted.
+          </div>
+        </label>
+        <label class="mode-card" id="mode-hosted-card">
+          <input type="radio" name="mode" value="hosted" id="mode-hosted" />
+          <div class="name">Hosted fallback</div>
+          <div class="sub">
+            Sends the transaction to our server. Use if you don&apos;t want
+            to bring your own RPC.
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- ─── RPC URL (local mode only) ────────────────────────── -->
+    <div class="section" id="section-rpc">
+      <p class="label">Solana RPC</p>
+      <div class="row">
+        <input
+          id="rpc-url"
+          type="url"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="https://api.devnet.solana.com"
+        />
+      </div>
+      <p class="hint">
+        Used for transaction simulation and on-chain registry lookups.
+        Helius / QuickNode / Triton / Alchemy URLs are pre-allowed.
+      </p>
+      <div class="actions">
+        <button id="rpc-save">Save</button>
+        <button id="rpc-reset">Reset to default</button>
+        <button id="rpc-test" class="primary">Test RPC</button>
+      </div>
+      <div id="rpc-test-result" class="test-result" hidden></div>
+    </div>
+
+    <!-- ─── Hosted analyzer endpoint (hosted mode only) ───────── -->
+    <div class="section" id="section-endpoint" hidden>
+      <p class="label">Hosted analyzer endpoint</p>
       <div class="row">
         <input
           id="endpoint"
@@ -205,17 +333,57 @@
           placeholder="https://your-instance.vercel.app/api/analyze"
         />
       </div>
-      <p class="hint" id="endpoint-hint">
-        URL of the /api/analyze route. Defaults to the hosted instance.
+      <p class="hint">
+        URL of the /api/analyze route. Active only in Hosted fallback mode.
       </p>
       <div class="actions">
-        <button id="save">Save</button>
-        <button id="reset">Reset to default</button>
-        <button id="test" class="primary">Test connection</button>
+        <button id="endpoint-save">Save</button>
+        <button id="endpoint-reset">Reset to default</button>
+        <button id="endpoint-test" class="primary">Test connection</button>
       </div>
-      <div id="test-result" class="test-result" hidden></div>
+      <div id="endpoint-test-result" class="test-result" hidden></div>
     </div>
 
+    <!-- ─── AI translator (optional) ─────────────────────────── -->
+    <div class="section">
+      <p class="label">AI translator (optional)</p>
+      <div class="toggle-row">
+        <input type="checkbox" id="llm-enabled" />
+        <label for="llm-enabled">
+          Enable plain-English explanations
+        </label>
+      </div>
+      <div id="llm-config" hidden>
+        <div class="row">
+          <input
+            id="llm-key"
+            type="password"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="Google Gemini API key"
+          />
+        </div>
+        <p class="hint">
+          Get a free key at
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noreferrer"
+            >aistudio.google.com/apikey</a
+          >. The key is held only in this browser session — it&apos;s wiped
+          when you close the browser, never saved to disk. The extension
+          calls Google directly with your key; TxGuardian never sees it.
+        </p>
+        <div class="actions">
+          <button id="llm-save">Save key</button>
+          <button id="llm-forget">Forget key</button>
+          <button id="llm-test" class="primary">Test key</button>
+        </div>
+        <div id="llm-test-result" class="test-result" hidden></div>
+      </div>
+    </div>
+
+    <!-- ─── Links ────────────────────────────────────────────── -->
     <div class="section links">
       <a id="link-extension" href="#" target="_blank" rel="noreferrer">
         Install guide
