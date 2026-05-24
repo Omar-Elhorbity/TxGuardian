@@ -579,14 +579,14 @@ function renderCard(state: ModalState): string {
  */
 function engineBadgeHTML(mode: EngineMode): string {
   if (mode === "local") {
-    return `<div class="engine-badge engine-badge-local" title="Verdict was computed on your device by the extension's bundled engine. TxGuardian's server was not contacted.">
+    return `<div class="engine-badge engine-badge-local" title="This transaction was analyzed by the extension's bundled engine in your browser. TxGuardian's server was not contacted.">
       <span class="engine-badge-icon">${ICON_DEVICE}</span>
-      <span>Verdict computed on your device</span>
+      <span>We didn&apos;t see this transaction</span>
     </div>`;
   }
-  return `<div class="engine-badge engine-badge-hosted" title="Verdict was computed by TxGuardian's hosted /api/analyze endpoint. Switch to Local engine in the popup to compute on-device.">
+  return `<div class="engine-badge engine-badge-hosted" title="This transaction was sent to TxGuardian's hosted /api/analyze endpoint. Switch to Local engine in the popup to keep it on your device.">
     <span class="engine-badge-icon">${ICON_CLOUD}</span>
-    <span>Verdict from hosted analyzer</span>
+    <span>Sent to TxGuardian server</span>
   </div>`;
 }
 
@@ -1048,7 +1048,9 @@ header {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 12px 20px 0;
+  /* Symmetric vertical margin so the badge breathes between the header
+     and the verdict block — was missing a bottom margin in v1. */
+  margin: 12px 20px;
   padding: 5px 10px;
   border-radius: 999px;
   font-size: 11px;
