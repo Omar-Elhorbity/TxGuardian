@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TxGuardian — Solana transaction safety",
   "version": "1.0.0",
-  "description": "Pre-sign safety verdict for every Solana transaction your wallet is about to sign. Deterministic checks, plain-English explanation.",
+  "description": "Pre-sign safety verdict for every Solana transaction your wallet is about to sign. Runs entirely on your device — your transactions stay in your browser.",
   "homepage_url": "https://tx-guardian-web.vercel.app",
   "icons": {
     "16": "icons/icon-16.png",
@@ -15,9 +15,14 @@
   ],
   "host_permissions": [
     "http://localhost:3000/*",
-    "https://*.vercel.app/*",
     "https://api.devnet.solana.com/*",
-    "https://api.mainnet-beta.solana.com/*"
+    "https://api.testnet.solana.com/*",
+    "https://api.mainnet-beta.solana.com/*",
+    "https://*.helius-rpc.com/*",
+    "https://*.quiknode.pro/*",
+    "https://*.rpcpool.com/*",
+    "https://*.alchemy.com/*",
+    "https://*.vercel.app/*"
   ],
   "background": {
     "service_worker": "service-worker-loader.js",
