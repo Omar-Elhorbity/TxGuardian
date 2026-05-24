@@ -257,6 +257,110 @@
       [hidden] {
         display: none !important;
       }
+
+      /* ─── Welcome panel (shown after install / v1→v2 update) ─── */
+      .welcome {
+        margin: 12px 16px 0;
+        padding: 12px 14px;
+        background: linear-gradient(
+          180deg,
+          rgba(214, 199, 155, 0.10),
+          rgba(214, 199, 155, 0.02)
+        );
+        border: 1px solid rgba(214, 199, 155, 0.30);
+        border-radius: 8px;
+      }
+      .welcome-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        margin: 0 0 4px;
+      }
+      .welcome-body {
+        font-size: 11.5px;
+        line-height: 1.55;
+        color: var(--text-secondary);
+        margin: 0 0 8px;
+      }
+      .welcome-dismiss {
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+
+      /* ─── AI section as <details> ─── */
+      .ai-details {
+        padding: 0;
+      }
+      .ai-details summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 16px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+      .ai-details summary::-webkit-details-marker {
+        display: none;
+      }
+      .ai-details summary::after {
+        content: "";
+        margin-left: auto;
+        width: 8px;
+        height: 8px;
+        border-right: 1.5px solid var(--text-muted);
+        border-bottom: 1.5px solid var(--text-muted);
+        transform: rotate(-45deg);
+        transition: transform 0.15s ease;
+      }
+      .ai-details[open] summary::after {
+        transform: rotate(45deg);
+      }
+      .ai-details .label {
+        margin: 0;
+        flex-shrink: 0;
+      }
+      .ai-details .ai-state {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .ai-details .ai-state.on {
+        color: var(--good);
+      }
+      .ai-details-inner {
+        padding: 0 16px 14px;
+      }
+
+      /* ─── Privacy summary readout (pinned at bottom) ─── */
+      .privacy {
+        padding: 12px 16px;
+        background: var(--surface-2);
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+      .privacy-label {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--text-muted);
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .privacy-readout {
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+      .privacy-readout .field {
+        color: var(--text-primary);
+      }
+      .privacy-readout .field.warn {
+        color: var(--accent);
+      }
     </style>
   </head>
   <body>
@@ -267,6 +371,17 @@
         <span class="version" id="version">v—</span>
         <span class="status" id="status-text">ready</span>
       </div>
+    </div>
+
+    <!-- ─── Welcome panel (first run / v1→v2 update) ─────────── -->
+    <div class="welcome" id="welcome" hidden>
+      <p class="welcome-title">Welcome to TxGuardian v2 — local-first.</p>
+      <p class="welcome-body">
+        The verdict engine now runs entirely on your device. Your
+        transactions stay in this browser unless you opt in to the
+        hosted fallback or AI translation. Pick your settings below.
+      </p>
+      <button class="welcome-dismiss" id="welcome-dismiss">Got it</button>
     </div>
 
     <!-- ─── Engine mode ───────────────────────────────────────── -->
@@ -344,44 +459,49 @@
       <div id="endpoint-test-result" class="test-result" hidden></div>
     </div>
 
-    <!-- ─── AI translator (optional) ─────────────────────────── -->
-    <div class="section">
-      <p class="label">AI translator (optional)</p>
-      <div class="toggle-row">
-        <input type="checkbox" id="llm-enabled" />
-        <label for="llm-enabled">
-          Enable plain-English explanations
-        </label>
-      </div>
-      <div id="llm-config" hidden>
-        <div class="row">
-          <input
-            id="llm-key"
-            type="password"
-            spellcheck="false"
-            autocomplete="off"
-            placeholder="Google Gemini API key"
-          />
+    <!-- ─── AI translator (optional, collapsible) ────────────── -->
+    <details class="section ai-details" id="ai-details">
+      <summary>
+        <p class="label">AI translator</p>
+        <span class="ai-state" id="ai-state">off</span>
+      </summary>
+      <div class="ai-details-inner">
+        <div class="toggle-row">
+          <input type="checkbox" id="llm-enabled" />
+          <label for="llm-enabled">
+            Enable plain-English explanations
+          </label>
         </div>
-        <p class="hint">
-          Get a free key at
-          <a
-            href="https://aistudio.google.com/apikey"
-            target="_blank"
-            rel="noreferrer"
-            >aistudio.google.com/apikey</a
-          >. The key is held only in this browser session — it&apos;s wiped
-          when you close the browser, never saved to disk. The extension
-          calls Google directly with your key; TxGuardian never sees it.
-        </p>
-        <div class="actions">
-          <button id="llm-save">Save key</button>
-          <button id="llm-forget">Forget key</button>
-          <button id="llm-test" class="primary">Test key</button>
+        <div id="llm-config" hidden>
+          <div class="row">
+            <input
+              id="llm-key"
+              type="password"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="Google Gemini API key"
+            />
+          </div>
+          <p class="hint">
+            Get a free key at
+            <a
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noreferrer"
+              >aistudio.google.com/apikey</a
+            >. The key is held only in this browser session — it&apos;s wiped
+            when you close the browser, never saved to disk. The extension
+            calls Google directly with your key; TxGuardian never sees it.
+          </p>
+          <div class="actions">
+            <button id="llm-save">Save key</button>
+            <button id="llm-forget">Forget key</button>
+            <button id="llm-test" class="primary">Test key</button>
+          </div>
+          <div id="llm-test-result" class="test-result" hidden></div>
         </div>
-        <div id="llm-test-result" class="test-result" hidden></div>
       </div>
-    </div>
+    </details>
 
     <!-- ─── Links ────────────────────────────────────────────── -->
     <div class="section links">
@@ -398,6 +518,12 @@
       >
         Source
       </a>
+    </div>
+
+    <!-- ─── Privacy summary (live readout, pinned at bottom) ─── -->
+    <div class="privacy">
+      <p class="privacy-label">Privacy posture</p>
+      <div class="privacy-readout" id="privacy-readout">—</div>
     </div>
 
     <script type="module" src="./popup.ts"></script>
