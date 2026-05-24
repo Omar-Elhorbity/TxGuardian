@@ -1,20 +1,39 @@
 /**
- * Popup script. Lets the user view + override the analyzer endpoint and
- * verify connectivity. The override is persisted to chrome.storage.local
- * under STORAGE_KEY_ENDPOINT; the service worker reads it on every request.
+ * Popup script. Manages four user-facing settings:
+ *   1. Engine mode — local (default) or hosted fallback
+ *   2. RPC URL — Solana RPC for local-mode simulation + registry lookups
+ *   3. Hosted analyzer endpoint — for hosted-mode users
+ *   4. AI translator — opt-in BYO Gemini key (session-only storage)
  *
- * "Test connection" issues an empty POST to the endpoint and treats any
- * response — including 4xx — as a positive signal that the route exists
- * and is reachable. A network error or 5xx counts as down.
+ * Storage policy:
+ *   - mode, rpcUrl, analyzerEndpoint, llmEnabled, llmModel → chrome.storage.local (persistent)
+ *   - llmKey                                                → chrome.storage.session (cleared on browser close, NEVER on disk)
+ *
+ * The popup never sees the LLM key in cleartext after save — once saved
+ * to session storage, the input field is replaced with a placeholder
+ * indicator. "Forget key" wipes it. This matches the password-field
+ * convention so users with shoulder-surfing concerns have a clean UX.
  */
 
 import {
   DEFAULT_ANALYZE_ENDPOINT,
+  DEFAULT_ENGINE_MODE,
+  DEFAULT_LLM_MODEL,
+  DEFAULT_RPC_URL,
   HOSTED_SITE_URL,
   STORAGE_KEY_ENDPOINT,
+  STORAGE_KEY_LLM_ENABLED,
+  STORAGE_KEY_LLM_KEY,
+  STORAGE_KEY_LLM_MODEL,
+  STORAGE_KEY_MODE,
+  STORAGE_KEY_RPC,
 } from "./config";
 
-const TEST_TIMEOUT_MS = 5000;
+const RPC_TEST_TIMEOUT_MS = 5000;
+const ENDPOINT_TEST_TIMEOUT_MS = 5000;
+const LLM_TEST_TIMEOUT_MS = 8000;
+
+// ─── DOM helpers ────────────────────────────────────────────────────────
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -25,145 +44,407 @@ const $ = <T extends HTMLElement>(id: string): T => {
 const dot = $<HTMLSpanElement>("status-dot");
 const statusText = $<HTMLSpanElement>("status-text");
 const versionEl = $<HTMLSpanElement>("version");
-const input = $<HTMLInputElement>("endpoint");
-const saveBtn = $<HTMLButtonElement>("save");
-const resetBtn = $<HTMLButtonElement>("reset");
-const testBtn = $<HTMLButtonElement>("test");
-const testResult = $<HTMLDivElement>("test-result");
+
+const modeLocal = $<HTMLInputElement>("mode-local");
+const modeHosted = $<HTMLInputElement>("mode-hosted");
+const modeLocalCard = $<HTMLLabelElement>("mode-local-card");
+const modeHostedCard = $<HTMLLabelElement>("mode-hosted-card");
+
+const sectionRpc = $<HTMLDivElement>("section-rpc");
+const sectionEndpoint = $<HTMLDivElement>("section-endpoint");
+
+const rpcInput = $<HTMLInputElement>("rpc-url");
+const rpcSave = $<HTMLButtonElement>("rpc-save");
+const rpcReset = $<HTMLButtonElement>("rpc-reset");
+const rpcTest = $<HTMLButtonElement>("rpc-test");
+const rpcResult = $<HTMLDivElement>("rpc-test-result");
+
+const endpointInput = $<HTMLInputElement>("endpoint");
+const endpointSave = $<HTMLButtonElement>("endpoint-save");
+const endpointReset = $<HTMLButtonElement>("endpoint-reset");
+const endpointTest = $<HTMLButtonElement>("endpoint-test");
+const endpointResult = $<HTMLDivElement>("endpoint-test-result");
+
+const llmEnabled = $<HTMLInputElement>("llm-enabled");
+const llmConfig = $<HTMLDivElement>("llm-config");
+const llmKey = $<HTMLInputElement>("llm-key");
+const llmSave = $<HTMLButtonElement>("llm-save");
+const llmForget = $<HTMLButtonElement>("llm-forget");
+const llmTest = $<HTMLButtonElement>("llm-test");
+const llmResult = $<HTMLDivElement>("llm-test-result");
+
 const linkExtension = $<HTMLAnchorElement>("link-extension");
 const linkPrivacy = $<HTMLAnchorElement>("link-privacy");
 
+// ─── Init ───────────────────────────────────────────────────────────────
+
 linkExtension.href = `${HOSTED_SITE_URL}/extension`;
 linkPrivacy.href = `${HOSTED_SITE_URL}/privacy`;
-
-// Surface the installed version so users can compare against the site's
-// current version and tell when their unpacked install has drifted.
 versionEl.textContent = `v${chrome.runtime.getManifest().version}`;
 
 void init();
 
 async function init(): Promise<void> {
-  const stored = await chrome.storage.local.get(STORAGE_KEY_ENDPOINT);
-  const value = stored[STORAGE_KEY_ENDPOINT];
-  input.value =
-    typeof value === "string" && value.trim().length > 0
-      ? value.trim()
-      : DEFAULT_ANALYZE_ENDPOINT;
+  const cfg = await loadConfig();
 
-  // Auto-run a connectivity check so the dot is meaningful on open.
-  void runTest({ silent: true });
+  // Mode
+  if (cfg.mode === "hosted") {
+    modeHosted.checked = true;
+  } else {
+    modeLocal.checked = true;
+  }
+  updateModeUi();
+
+  // RPC
+  rpcInput.value = cfg.rpcUrl;
+
+  // Endpoint
+  endpointInput.value = cfg.endpoint;
+
+  // LLM
+  llmEnabled.checked = cfg.llmEnabled;
+  updateLlmConfigVisibility();
+  if (cfg.llmKeyPresent) {
+    llmKey.placeholder = "•••••••• (key saved to session)";
+  }
+
+  setStatusReady(cfg.mode);
 }
 
-saveBtn.addEventListener("click", () => {
-  void save();
+// ─── Load + save ────────────────────────────────────────────────────────
+
+interface PopupConfig {
+  mode: "local" | "hosted";
+  rpcUrl: string;
+  endpoint: string;
+  llmEnabled: boolean;
+  llmKeyPresent: boolean;
+}
+
+async function loadConfig(): Promise<PopupConfig> {
+  const local = await chrome.storage.local.get([
+    STORAGE_KEY_MODE,
+    STORAGE_KEY_RPC,
+    STORAGE_KEY_ENDPOINT,
+    STORAGE_KEY_LLM_ENABLED,
+  ]);
+  let llmKeyPresent = false;
+  try {
+    if (typeof chrome.storage.session !== "undefined") {
+      const session = await chrome.storage.session.get([STORAGE_KEY_LLM_KEY]);
+      const k = session[STORAGE_KEY_LLM_KEY];
+      llmKeyPresent = typeof k === "string" && k.trim().length > 0;
+    }
+  } catch {
+    llmKeyPresent = false;
+  }
+  return {
+    mode: local[STORAGE_KEY_MODE] === "hosted" ? "hosted" : DEFAULT_ENGINE_MODE,
+    rpcUrl: trimOrDefault(local[STORAGE_KEY_RPC], DEFAULT_RPC_URL),
+    endpoint: trimOrDefault(
+      local[STORAGE_KEY_ENDPOINT],
+      DEFAULT_ANALYZE_ENDPOINT,
+    ),
+    llmEnabled: local[STORAGE_KEY_LLM_ENABLED] === true,
+    llmKeyPresent,
+  };
+}
+
+function trimOrDefault(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : fallback;
+}
+
+// ─── Mode (radio toggle) ────────────────────────────────────────────────
+
+function updateModeUi(): void {
+  const isLocal = modeLocal.checked;
+  modeLocalCard.classList.toggle("selected", isLocal);
+  modeHostedCard.classList.toggle("selected", !isLocal);
+  sectionRpc.hidden = !isLocal;
+  sectionEndpoint.hidden = isLocal;
+  setStatusReady(isLocal ? "local" : "hosted");
+}
+
+async function onModeChange(): Promise<void> {
+  const mode = modeLocal.checked ? "local" : "hosted";
+  await chrome.storage.local.set({ [STORAGE_KEY_MODE]: mode });
+  updateModeUi();
+}
+
+modeLocal.addEventListener("change", () => void onModeChange());
+modeHosted.addEventListener("change", () => void onModeChange());
+
+// ─── RPC ────────────────────────────────────────────────────────────────
+
+rpcSave.addEventListener("click", () => void saveRpc());
+rpcReset.addEventListener("click", () => void resetRpc());
+rpcTest.addEventListener("click", () => void testRpc());
+rpcInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") void saveRpc();
 });
 
-resetBtn.addEventListener("click", () => {
-  void reset();
-});
-
-testBtn.addEventListener("click", () => {
-  void runTest({ silent: false });
-});
-
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") void save();
-});
-
-async function save(): Promise<void> {
-  const raw = input.value.trim();
+async function saveRpc(): Promise<void> {
+  const raw = rpcInput.value.trim();
   if (raw.length === 0) {
-    showTest("Endpoint can't be empty.", "err");
+    showResult(rpcResult, "RPC URL can't be empty.", "err");
     return;
   }
-  if (!isValidUrl(raw)) {
-    showTest("Not a valid URL.", "err");
+  if (!isValidHttpUrl(raw)) {
+    showResult(rpcResult, "Not a valid URL.", "err");
+    return;
+  }
+  await chrome.storage.local.set({ [STORAGE_KEY_RPC]: raw });
+  showResult(rpcResult, "Saved.", "ok");
+}
+
+async function resetRpc(): Promise<void> {
+  await chrome.storage.local.remove(STORAGE_KEY_RPC);
+  rpcInput.value = DEFAULT_RPC_URL;
+  showResult(rpcResult, "Reset to default.", "ok");
+}
+
+async function testRpc(): Promise<void> {
+  const url = rpcInput.value.trim() || DEFAULT_RPC_URL;
+  showResult(rpcResult, `Pinging ${url}…`, "neutral");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RPC_TEST_TIMEOUT_MS);
+  try {
+    // Minimal JSON-RPC ping. getHealth is universally cheap on Solana RPCs.
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getHealth",
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const ctype = res.headers.get("content-type") ?? "";
+    if (!ctype.includes("application/json")) {
+      showResult(rpcResult, `HTTP ${res.status}, non-JSON — not a Solana RPC.`, "err");
+      return;
+    }
+    const json = (await res.json()) as { result?: unknown; error?: unknown };
+    if (json.error) {
+      showResult(rpcResult, `RPC returned an error.`, "err");
+      return;
+    }
+    showResult(rpcResult, `RPC reachable. ✓`, "ok");
+  } catch (err) {
+    clearTimeout(timer);
+    const msg =
+      err instanceof Error
+        ? err.name === "AbortError"
+          ? `Timed out after ${RPC_TEST_TIMEOUT_MS / 1000}s`
+          : err.message
+        : String(err);
+    showResult(rpcResult, msg, "err");
+  }
+}
+
+// ─── Hosted endpoint ────────────────────────────────────────────────────
+
+endpointSave.addEventListener("click", () => void saveEndpoint());
+endpointReset.addEventListener("click", () => void resetEndpoint());
+endpointTest.addEventListener("click", () => void testEndpoint());
+endpointInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") void saveEndpoint();
+});
+
+async function saveEndpoint(): Promise<void> {
+  const raw = endpointInput.value.trim();
+  if (raw.length === 0 || !isValidHttpUrl(raw)) {
+    showResult(endpointResult, "Not a valid URL.", "err");
     return;
   }
   await chrome.storage.local.set({ [STORAGE_KEY_ENDPOINT]: raw });
-  showTest("Saved.", "ok");
-  void runTest({ silent: true });
+  showResult(endpointResult, "Saved.", "ok");
 }
 
-async function reset(): Promise<void> {
+async function resetEndpoint(): Promise<void> {
   await chrome.storage.local.remove(STORAGE_KEY_ENDPOINT);
-  input.value = DEFAULT_ANALYZE_ENDPOINT;
-  showTest("Reset to default.", "ok");
-  void runTest({ silent: true });
+  endpointInput.value = DEFAULT_ANALYZE_ENDPOINT;
+  showResult(endpointResult, "Reset to default.", "ok");
 }
 
-interface TestOpts {
-  silent: boolean;
-}
-
-async function runTest(opts: TestOpts): Promise<void> {
-  const target = input.value.trim() || DEFAULT_ANALYZE_ENDPOINT;
-  setStatus("checking", "checking…");
-  if (!opts.silent) showTest(`Pinging ${target}…`, "neutral");
-
+async function testEndpoint(): Promise<void> {
+  const target = endpointInput.value.trim() || DEFAULT_ANALYZE_ENDPOINT;
+  showResult(endpointResult, `Pinging ${target}…`, "neutral");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS);
-
+  const timer = setTimeout(() => controller.abort(), ENDPOINT_TEST_TIMEOUT_MS);
   try {
     const res = await fetch(target, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Empty body. The real /api/analyze returns JSON with an error field.
-      // Non-JSON responses indicate the URL doesn't point at the analyzer
-      // (typical case: Vercel's "DEPLOYMENT_NOT_FOUND" HTML on a missing
-      // project, or a CDN/static page at the wrong path).
       body: "{}",
       signal: controller.signal,
     });
     clearTimeout(timer);
     const ctype = res.headers.get("content-type") ?? "";
-    const isJson = ctype.includes("application/json");
+    if (!ctype.includes("application/json")) {
+      showResult(
+        endpointResult,
+        `HTTP ${res.status}, non-JSON — this URL doesn't look like the analyzer.`,
+        "err",
+      );
+      return;
+    }
     if (res.status >= 500) {
-      setStatus("err", "server error");
-      if (!opts.silent) showTest(`HTTP ${res.status} — server error.`, "err");
+      showResult(endpointResult, `HTTP ${res.status} — server error.`, "err");
       return;
     }
-    if (!isJson) {
-      setStatus("err", "not the analyzer");
-      if (!opts.silent) {
-        showTest(
-          `HTTP ${res.status}, non-JSON response — this URL doesn't look like the analyzer route.`,
-          "err",
-        );
-      }
-      return;
-    }
-    setStatus("ok", "reachable");
-    if (!opts.silent) showTest(`HTTP ${res.status} — analyzer responding.`, "ok");
+    showResult(endpointResult, `HTTP ${res.status} — analyzer responding.`, "ok");
   } catch (err) {
     clearTimeout(timer);
-    setStatus("err", "unreachable");
     const msg =
       err instanceof Error
         ? err.name === "AbortError"
-          ? `Timed out after ${TEST_TIMEOUT_MS / 1000}s`
+          ? `Timed out after ${ENDPOINT_TEST_TIMEOUT_MS / 1000}s`
           : err.message
         : String(err);
-    if (!opts.silent) showTest(msg, "err");
+    showResult(endpointResult, msg, "err");
   }
 }
 
-function setStatus(state: "checking" | "ok" | "err", text: string): void {
-  dot.classList.remove("ok", "err");
-  if (state === "ok") dot.classList.add("ok");
-  if (state === "err") dot.classList.add("err");
-  statusText.textContent = text;
+// ─── AI translator ──────────────────────────────────────────────────────
+
+llmEnabled.addEventListener("change", () => {
+  void chrome.storage.local.set({
+    [STORAGE_KEY_LLM_ENABLED]: llmEnabled.checked,
+  });
+  // Set the model too (locked to default for v1; future-proof).
+  void chrome.storage.local.set({
+    [STORAGE_KEY_LLM_MODEL]: DEFAULT_LLM_MODEL,
+  });
+  updateLlmConfigVisibility();
+});
+
+llmSave.addEventListener("click", () => void saveLlmKey());
+llmForget.addEventListener("click", () => void forgetLlmKey());
+llmTest.addEventListener("click", () => void testLlmKey());
+llmKey.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") void saveLlmKey();
+});
+
+function updateLlmConfigVisibility(): void {
+  llmConfig.hidden = !llmEnabled.checked;
 }
 
-function showTest(text: string, kind: "ok" | "err" | "neutral"): void {
-  testResult.hidden = false;
-  testResult.classList.remove("ok", "err");
-  if (kind === "ok") testResult.classList.add("ok");
-  if (kind === "err") testResult.classList.add("err");
-  testResult.textContent = text;
+async function saveLlmKey(): Promise<void> {
+  const raw = llmKey.value.trim();
+  if (raw.length === 0) {
+    showResult(llmResult, "Key can't be empty.", "err");
+    return;
+  }
+  if (typeof chrome.storage.session === "undefined") {
+    showResult(
+      llmResult,
+      "chrome.storage.session isn't available in this browser. Upgrade Chrome to use session-only key storage.",
+      "err",
+    );
+    return;
+  }
+  await chrome.storage.session.set({ [STORAGE_KEY_LLM_KEY]: raw });
+  llmKey.value = "";
+  llmKey.placeholder = "•••••••• (key saved to session)";
+  showResult(
+    llmResult,
+    "Key saved to this browser session. Will be cleared when the browser closes.",
+    "ok",
+  );
 }
 
-function isValidUrl(s: string): boolean {
+async function forgetLlmKey(): Promise<void> {
+  try {
+    if (typeof chrome.storage.session !== "undefined") {
+      await chrome.storage.session.remove(STORAGE_KEY_LLM_KEY);
+    }
+  } catch {
+    // ignore — best effort
+  }
+  llmKey.value = "";
+  llmKey.placeholder = "Google Gemini API key";
+  showResult(llmResult, "Key forgotten.", "ok");
+}
+
+async function testLlmKey(): Promise<void> {
+  // Resolve the key — prefer the field value if user just typed it,
+  // otherwise read from session storage.
+  let key = llmKey.value.trim();
+  if (key.length === 0) {
+    try {
+      if (typeof chrome.storage.session !== "undefined") {
+        const session = await chrome.storage.session.get([STORAGE_KEY_LLM_KEY]);
+        const stored = session[STORAGE_KEY_LLM_KEY];
+        if (typeof stored === "string" && stored.trim().length > 0) {
+          key = stored.trim();
+        }
+      }
+    } catch {
+      // fall through
+    }
+  }
+  if (key.length === 0) {
+    showResult(llmResult, "Enter a key first, then test.", "err");
+    return;
+  }
+  showResult(llmResult, "Testing key…", "neutral");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_TEST_TIMEOUT_MS);
+  try {
+    // Minimal Gemini API call. The key auth happens via query param.
+    // We use the listModels endpoint — cheapest possible request, returns
+    // the model catalog if the key is valid, 400 if not.
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.status === 200) {
+      showResult(llmResult, "Key valid. ✓", "ok");
+    } else if (res.status === 400 || res.status === 401 || res.status === 403) {
+      showResult(llmResult, `Key rejected (HTTP ${res.status}).`, "err");
+    } else {
+      showResult(llmResult, `Unexpected HTTP ${res.status}.`, "err");
+    }
+  } catch (err) {
+    clearTimeout(timer);
+    const msg =
+      err instanceof Error
+        ? err.name === "AbortError"
+          ? `Timed out after ${LLM_TEST_TIMEOUT_MS / 1000}s`
+          : err.message
+        : String(err);
+    showResult(llmResult, msg, "err");
+  }
+}
+
+// ─── Status header ──────────────────────────────────────────────────────
+
+function setStatusReady(mode: "local" | "hosted"): void {
+  dot.classList.remove("err");
+  statusText.textContent = mode === "local" ? "local" : "hosted";
+}
+
+// ─── Shared result helper ───────────────────────────────────────────────
+
+function showResult(
+  el: HTMLDivElement,
+  text: string,
+  kind: "ok" | "err" | "neutral",
+): void {
+  el.hidden = false;
+  el.classList.remove("ok", "err");
+  if (kind === "ok") el.classList.add("ok");
+  if (kind === "err") el.classList.add("err");
+  el.textContent = text;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────
+
+function isValidHttpUrl(s: string): boolean {
   try {
     const u = new URL(s);
     return u.protocol === "http:" || u.protocol === "https:";

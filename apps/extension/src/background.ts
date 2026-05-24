@@ -36,9 +36,13 @@ import {
 import {
   DEFAULT_ANALYZE_ENDPOINT,
   DEFAULT_ENGINE_MODE,
+  DEFAULT_LLM_MODEL,
   DEFAULT_RPC_URL,
   HOSTED_SITE_URL,
   STORAGE_KEY_ENDPOINT,
+  STORAGE_KEY_LLM_ENABLED,
+  STORAGE_KEY_LLM_KEY,
+  STORAGE_KEY_LLM_MODEL,
   STORAGE_KEY_MODE,
   STORAGE_KEY_RPC,
   type EngineMode,
@@ -90,33 +94,61 @@ interface ResolvedConfig {
   mode: EngineMode;
   rpcUrl: string;
   analyzerEndpoint: string;
+  /** LLM enabled toggle. False by default. */
+  llmEnabled: boolean;
+  /** User-supplied Gemini API key from chrome.storage.session, or null. */
+  llmKey: string | null;
+  /** Selected Gemini model. */
+  llmModel: string;
 }
 
 async function resolveConfig(): Promise<ResolvedConfig> {
+  let localStored: Record<string, unknown> = {};
   try {
-    const stored = await chrome.storage.local.get([
+    localStored = await chrome.storage.local.get([
       STORAGE_KEY_MODE,
       STORAGE_KEY_RPC,
       STORAGE_KEY_ENDPOINT,
+      STORAGE_KEY_LLM_ENABLED,
+      STORAGE_KEY_LLM_MODEL,
     ]);
-    return {
-      mode:
-        stored[STORAGE_KEY_MODE] === "hosted"
-          ? "hosted"
-          : DEFAULT_ENGINE_MODE,
-      rpcUrl: trimOrDefault(stored[STORAGE_KEY_RPC], DEFAULT_RPC_URL),
-      analyzerEndpoint: trimOrDefault(
-        stored[STORAGE_KEY_ENDPOINT],
-        DEFAULT_ANALYZE_ENDPOINT,
-      ),
-    };
   } catch {
-    return {
-      mode: DEFAULT_ENGINE_MODE,
-      rpcUrl: DEFAULT_RPC_URL,
-      analyzerEndpoint: DEFAULT_ANALYZE_ENDPOINT,
-    };
+    // fall through with defaults
   }
+
+  // chrome.storage.session holds the LLM key (cleared on browser close).
+  // Some older Chrome versions might not have it; treat absence as "no key".
+  let llmKey: string | null = null;
+  try {
+    const sessionStored =
+      typeof chrome.storage.session !== "undefined"
+        ? await chrome.storage.session.get([STORAGE_KEY_LLM_KEY])
+        : {};
+    const k = sessionStored[STORAGE_KEY_LLM_KEY];
+    if (typeof k === "string" && k.trim().length > 0) {
+      llmKey = k.trim();
+    }
+  } catch {
+    llmKey = null;
+  }
+
+  return {
+    mode:
+      localStored[STORAGE_KEY_MODE] === "hosted"
+        ? "hosted"
+        : DEFAULT_ENGINE_MODE,
+    rpcUrl: trimOrDefault(localStored[STORAGE_KEY_RPC], DEFAULT_RPC_URL),
+    analyzerEndpoint: trimOrDefault(
+      localStored[STORAGE_KEY_ENDPOINT],
+      DEFAULT_ANALYZE_ENDPOINT,
+    ),
+    llmEnabled: localStored[STORAGE_KEY_LLM_ENABLED] === true,
+    llmKey,
+    llmModel: trimOrDefault(
+      localStored[STORAGE_KEY_LLM_MODEL],
+      DEFAULT_LLM_MODEL,
+    ),
+  };
 }
 
 function trimOrDefault(value: unknown, fallback: string): string {
@@ -135,7 +167,7 @@ async function handleAnalyze(
   if (cfg.mode === "hosted") {
     return analyzeViaHostedAnalyzer(req, cfg.analyzerEndpoint);
   }
-  return analyzeLocally(req, cfg.rpcUrl);
+  return analyzeLocally(req, cfg);
 }
 
 // ─── Local engine path ──────────────────────────────────────────────────
@@ -158,14 +190,21 @@ function getConnection(rpcUrl: string): Connection {
 
 async function analyzeLocally(
   req: AnalyzeRequest,
-  rpcUrl: string,
+  cfg: ResolvedConfig,
 ): Promise<AnalyzeResponse> {
   try {
-    const connection = getConnection(rpcUrl);
+    const connection = getConnection(cfg.rpcUrl);
+    // AI translation is opt-in (user's key from chrome.storage.session).
+    // If LLM is enabled but the key is missing, we silently skip — the
+    // popup is responsible for telling the user to enter their key.
+    const useAi = cfg.llmEnabled && cfg.llmKey !== null;
     const result = await analyze({
       transaction: req.base64,
       connection,
       mode: SDK_MODE,
+      ...(useAi
+        ? { aiApiKey: cfg.llmKey!, model: cfg.llmModel }
+        : {}),
     });
     return {
       type: "ANALYZE_RESPONSE",
