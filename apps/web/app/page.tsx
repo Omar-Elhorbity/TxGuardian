@@ -21,16 +21,15 @@ export default function HomePage() {
           Browser extension · Solana
         </p>
         <h1 className="text-[32px] font-semibold leading-[1.15] tracking-tight md:text-[40px]">
-          Know what you&apos;re signing,
+          See what you&apos;re signing.
           <br className="hidden md:block" />
-          <span className="text-text-secondary">before you sign it.</span>
+          <span className="text-text-secondary">We don&apos;t.</span>
         </h1>
         <p className="mt-5 max-w-[620px] text-[15px] leading-[1.65] text-text-secondary">
-          TxGuardian is a browser extension that sits between your wallet and
-          every Solana dApp. Each signing request is intercepted, checked
-          against deterministic risk rules and a live on-chain attestation
-          registry, and translated into plain English. Then it steps aside so
-          you decide. No signing surface, no key access.
+          TxGuardian is a Solana browser extension that checks every signing
+          request in your browser, before your wallet&apos;s prompt appears.
+          The engine runs on your device — your transactions never reach our
+          server. Verdicts in milliseconds. No keys, no accounts, no telemetry.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link href="/extension" className="btn btn-primary">
@@ -87,6 +86,10 @@ export default function HomePage() {
         </div>
         <p className="mt-4 text-center text-[12px] text-text-muted">
           Same transaction. Two different stories.
+          <br />
+          <span className="text-text-secondary">
+            The check happens on your device — TxGuardian sees neither.
+          </span>
         </p>
       </section>
 
@@ -106,18 +109,18 @@ export default function HomePage() {
           />
           <Step
             n={2}
-            title="Deterministic rule engine"
-            body="Six active rules check for known drainers, unlimited approvals, suspicious destinations, unverified programs, instruction complexity, and unusual fees."
+            title="Checked on your device"
+            body="Six rules run inside the extension's service worker — known drainers, unlimited approvals, suspicious destinations, unverified programs, complexity, unusual fees."
           />
           <Step
             n={3}
             title="On-chain registry lookup"
-            body="The SDK reads confirmed entries from a live Anchor program on devnet — the drainer feed isn't hardcoded by us."
+            body="The engine reads confirmed entries from a live Anchor program on devnet — the drainer feed isn't hardcoded by us."
           />
           <Step
             n={4}
-            title="Plain-English translation"
-            body="Gemini 2.5 Flash renders the verdict into a 5-second read. Translator only — never decides risk."
+            title="Plain-English explanation"
+            body="Optional: bring your own Gemini key for AI prose. We never see the key or the prose. Verdict comes back in milliseconds either way."
           />
         </ol>
       </section>
@@ -138,26 +141,26 @@ export default function HomePage() {
                 id="extension-heading"
                 className="text-[18px] font-semibold tracking-tight"
               >
-                Already protected on every dApp.
+                The check runs in your browser.
               </h2>
               <p className="mt-2 max-w-[640px] text-[14px] leading-[1.6] text-text-secondary">
-                The TxGuardian browser extension sits between your wallet and
-                any Solana dApp. Every signing request is intercepted, analyzed
-                via the same engine that powers this scanner, and surfaced as
-                a verdict overlay before your wallet's prompt appears.
+                The whole engine ships in the extension. When you click sign,
+                we don&apos;t see the transaction — we can&apos;t. Verdicts
+                are computed on your device, against a Solana RPC of your
+                choice, in milliseconds.
               </p>
               <ul className="mt-4 grid gap-1.5 text-[13px] text-text-secondary md:grid-cols-2">
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-risk-safe">✓</span>
+                  Your transactions stay in your browser
+                </li>
                 <li className="flex gap-2">
                   <span aria-hidden className="text-risk-safe">✓</span>
                   Phantom + every Wallet Standard wallet
                 </li>
                 <li className="flex gap-2">
                   <span aria-hidden className="text-risk-safe">✓</span>
-                  ~30 KB, no React, no telemetry
-                </li>
-                <li className="flex gap-2">
-                  <span aria-hidden className="text-risk-safe">✓</span>
-                  Never touches your keys
+                  No keys, no accounts, no telemetry
                 </li>
                 <li className="flex gap-2">
                   <span aria-hidden className="text-risk-safe">✓</span>

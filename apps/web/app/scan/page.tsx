@@ -186,10 +186,15 @@ export default function ScanPage() {
           >
             browser extension
           </Link>{" "}
-          uses behind every signing prompt. Pick a sample, drop in a signature
-          from Solana Explorer, or paste a base64 transaction — get the
-          verdict, flags, and plain-English explanation. Optionally connect a
-          wallet to sign-and-send a sample on devnet.
+          runs locally. Here on the web it runs on our server (the page
+          doesn&apos;t have an installed extension) — same code, same
+          verdicts. Pick a sample, drop in a signature from Solana Explorer,
+          or paste a base64 transaction. Optionally connect a wallet to
+          sign-and-send a sample on devnet.
+        </p>
+        <p className="mt-2 text-[12px] leading-[1.6] text-text-muted">
+          Want privacy? Install the extension — verdicts compute on your
+          device, no server in the loop.
         </p>
         <p className="mt-2 text-[12px] leading-[1.6] text-text-muted">
           Integrating the SDK and want to see raw{" "}

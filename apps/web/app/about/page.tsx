@@ -12,13 +12,13 @@ export default function AboutPage() {
           About TxGuardian
         </h1>
         <p className="mt-3 text-[15px] leading-[1.65] text-text-secondary">
-          A browser extension that intercepts every Solana signing request
-          and shows a safety verdict before your wallet&apos;s prompt
-          appears. The engine that powers it is also exposed as a public
-          demo and a TypeScript SDK, and it reads from an on-chain
-          attestation registry deployed on devnet. Deterministic rules
-          decide what&apos;s risky; an AI translator makes the verdict
-          legible to a non-developer in seconds.
+          A Solana browser extension that checks every signing request{" "}
+          <strong className="text-text-primary">in your browser</strong>{" "}
+          before your wallet&apos;s prompt appears. The verdict engine
+          ships in the extension itself — your transactions never reach
+          our server. Deterministic rules decide what&apos;s risky; an
+          optional AI translator (your Gemini key) makes the verdict
+          legible in seconds.
         </p>
       </header>
 
@@ -54,25 +54,42 @@ export default function AboutPage() {
         </h2>
         <div className="panel mt-3 p-5">
           <pre className="overflow-x-auto font-mono text-[11.5px] leading-[1.7] text-text-secondary">
-{`Extension          ─┐
-                    ├── HTTP /api/analyze ──── @txguardian/sdk  (the engine)
-Web demo (/scan)   ─┘                          ├─ Parser     (legacy + v0 + ALT + Token-2022)
-                                               ├─ Decoder    (instruction summaries; memo stripped)
-                                               ├─ Simulator  (replaceRecentBlockhash, sigVerify=false)
-                                               ├─ Registry   (on-chain getProgramAccounts) ─────┐
-                                               ├─ Rules      (deterministic — source of truth) ←┘
-                                               ├─ Scorer     (severity → 0–100 → recommendation)
-                                               └─ Translator (Gemini 2.5 Flash — never decides risk)`}
+{`EXTENSION  (the product — bundles the entire engine)
+┌────────────────────────────────────────────────────────────────┐
+│  page.ts (MAIN world)                                          │
+│    intercepts signTransaction → serializes → postMessage       │
+│           ↓                                                    │
+│  service worker                                                │
+│    runs @txguardian/sdk locally:                              │
+│      Parser   (legacy + v0 + ALT + Token-2022)                 │
+│      Decoder  (instruction summaries; memo stripped)           │
+│      Simulator (your RPC — sigVerify=false)                    │
+│      Registry  (your RPC — drainer + verified feeds)           │
+│      Rules     (deterministic — source of truth)               │
+│      Scorer    (severity → 0–100 → recommendation)             │
+│    ┌─ optional: Translator (Google Gemini · YOUR key) ────┐    │
+│    │  TxGuardian server NEVER involved in the LLM call    │    │
+│    └─────────────────────────────────────────────────────────┘    │
+│           ↓                                                    │
+│  Shadow-DOM modal · user decides · wallet has the final say   │
+└────────────────────────────────────────────────────────────────┘
+
+WEB SITE  (demo + docs — optional)
+┌────────────────────────────────────────────────────────────────┐
+│  /scan, /playground  ──→  POST /api/analyze  (same engine,     │
+│  hosted convenience for users without a personal RPC + key)    │
+└────────────────────────────────────────────────────────────────┘`}
           </pre>
         </div>
         <p className="mt-3 text-[13px] leading-[1.65] text-text-muted">
-          Both client surfaces speak HTTP to the analyzer route so the LLM
-          key and RPC URL stay server-side. The deterministic engine is the
-          source of truth on risk; the LLM only renders the verdict into
-          prose — it cannot raise, lower, or invent flags, and the
-          recommendation is enum-locked to the deterministic level. The
-          on-chain registry feeds confirmed attestations into the drainer
-          rule alongside a hardcoded fallback list.
+          The deterministic engine is the source of truth on risk. The
+          LLM is a translator only — it can&apos;t raise, lower, or invent
+          flags, and the recommendation is enum-locked to the
+          deterministic level. With the engine running on your device, the
+          verdict is something we can&apos;t influence: it&apos;s computed
+          in code you can audit and that matches the SHA256 published next
+          to the download. The optional AI prose uses your own Gemini key
+          and goes directly to Google — TxGuardian never sees it.
         </p>
       </section>
 
@@ -116,12 +133,13 @@ Web demo (/scan)   ─┘                          ├─ Parser     (legacy + v
           Scope
         </h2>
         <p className="mt-3 text-[14px] leading-[1.7] text-text-primary">
-          The browser extension is the product. The other surfaces are how
+          The browser extension is the product. Everything else is how
           you reach the same engine without installing it: a public web
-          demo at /scan for one-off analysis, a TypeScript SDK for
-          integrators that want pre-sign checks embedded in their own
-          wallet or dApp code, and the Anchor program on devnet that
-          supplies the on-chain drainer feed both of those consume.
+          demo at /scan for one-off analysis (the only place our server
+          runs the engine), a TypeScript SDK for integrators that want
+          pre-sign checks embedded in their own wallet or dApp code, and
+          the Anchor program on devnet that supplies the on-chain
+          drainer + verified-program feeds.
         </p>
       </section>
 
