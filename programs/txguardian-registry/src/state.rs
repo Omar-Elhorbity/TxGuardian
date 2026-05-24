@@ -51,3 +51,37 @@ pub const STATUS_REVOKED: u8 = 2;
 pub const SEVERITY_LOW: u8 = 1;
 pub const SEVERITY_MEDIUM: u8 = 2;
 pub const SEVERITY_HIGH: u8 = 3;
+
+/// Positive attestation — "this program has been reviewed and is safe."
+///
+/// Counterpart to `Attestation` (which is the drainer / risk feed). Same
+/// admin-curated lifecycle (anyone submits as pending, admin confirms or
+/// revokes), but consumed by the SDK to SUPPRESS the UNKNOWN_PROGRAM flag
+/// rather than to raise one. Together they turn the registry from a
+/// decentralized blocklist into a decentralized both-list.
+///
+/// PDA seed: [b"verified", target_program.as_ref()] — different prefix
+/// from `Attestation` so the two coexist without collision and migration
+/// for existing on-chain accounts is unnecessary.
+#[account]
+#[derive(InitSpace)]
+pub struct VerifiedAttestation {
+    /// The Solana program being verified as safe.
+    pub target_program: Pubkey,
+    /// 0=pending, 1=confirmed, 2=revoked. Reuses the status constants.
+    pub status: u8,
+    /// First account that paid rent.
+    pub submitter: Pubkey,
+    /// Admin that confirmed (or revoked). Default Pubkey while pending.
+    pub attested_by: Pubkey,
+    /// Unix timestamp at submission.
+    pub created_at: i64,
+    /// Unix timestamp at last status change.
+    pub updated_at: i64,
+    /// Free-form short note (project name, audit reference, etc).
+    /// UNTRUSTED text — handled the same way as `Attestation.reason`:
+    /// never quoted verbatim in LLM contexts, never used as a code-path key.
+    pub note: [u8; 64],
+    /// PDA bump.
+    pub bump: u8,
+}
