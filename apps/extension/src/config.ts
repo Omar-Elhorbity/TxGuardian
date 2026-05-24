@@ -71,3 +71,12 @@ export const STORAGE_KEY_LLM_KEY = "llmKey";
 /** Selected LLM model. Locked to Gemini for v1 per the plan; future-proof. */
 export const STORAGE_KEY_LLM_MODEL = "llmModel";
 export const DEFAULT_LLM_MODEL = "gemini-2.5-flash";
+
+// ─── First-run / what's-new flag ────────────────────────────────────────
+
+/**
+ * When set to `true`, the popup shows a one-time "what's new in v2"
+ * welcome panel. Set by the service worker on first install and on
+ * update from v1.x. Cleared when the user dismisses the panel.
+ */
+export const STORAGE_KEY_SHOW_WELCOME = "showWelcomePanel";

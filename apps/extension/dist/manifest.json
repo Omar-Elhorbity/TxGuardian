@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TxGuardian — Solana transaction safety",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Pre-sign safety verdict for every Solana transaction your wallet is about to sign. Runs entirely on your device — your transactions stay in your browser.",
   "homepage_url": "https://tx-guardian-web.vercel.app",
   "icons": {
