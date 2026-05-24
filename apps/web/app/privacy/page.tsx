@@ -19,35 +19,73 @@ export default function PrivacyPage() {
         </p>
         <p className="mt-4 text-[15px] leading-[1.65] text-text-secondary">
           TxGuardian is a transaction-safety tool. It analyzes Solana
-          transactions before you sign them. This page describes exactly
-          what the browser extension and the public engine demo send,
-          store, and don&apos;t — in plain English.
+          transactions before you sign them. The most important sentence
+          on this page is the next one.
+        </p>
+        <p className="mt-4 text-[15px] leading-[1.65] text-text-primary font-medium">
+          By default, your transactions never leave your browser.
+        </p>
+        <p className="mt-3 text-[14px] leading-[1.65] text-text-secondary">
+          The verdict engine ships inside the extension. When a dApp asks
+          you to sign, the analysis runs in your service worker — not on
+          our server. There are two optional opt-ins (hosted analyzer for
+          users without a Solana RPC; AI prose explanation via your own
+          Gemini key) that broaden the trust circle in different ways.
+          Both are off by default. This page describes exactly what flows
+          where in each configuration.
         </p>
       </header>
 
       <section className="mt-12">
         <h2 className="text-[12px] font-medium uppercase tracking-[0.12em] text-text-muted">
-          What gets sent to the analyzer
+          What flows where, by mode
         </h2>
-        <div className="mt-3 space-y-3 text-[14px] leading-[1.7] text-text-secondary">
-          <p>
-            When a dApp asks you to sign a transaction (extension) or you
-            submit one to the engine demo, TxGuardian sends the
-            <strong className="text-text-primary"> serialized
-            transaction</strong> as a base64 string to the analyzer endpoint
-            (<code className="font-mono text-[12px] text-text-primary">
-              /api/analyze
-            </code>
-            ).
-          </p>
-          <p>
-            The transaction contains: the instructions, the program IDs they
-            target, the accounts they touch, and a fee payer. It does{" "}
-            <strong className="text-text-primary">not</strong> contain your
-            private key — Solana transactions are signed locally by your
-            wallet after the analysis returns.
-          </p>
+        <div className="mt-3 overflow-x-auto rounded-md border border-border">
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className="bg-surface-2 text-left text-[11px] uppercase tracking-[0.1em] text-text-muted">
+                <th className="px-3 py-2 font-medium">Configuration</th>
+                <th className="px-3 py-2 font-medium">TxGuardian server</th>
+                <th className="px-3 py-2 font-medium">Your RPC provider</th>
+                <th className="px-3 py-2 font-medium">Google (Gemini)</th>
+              </tr>
+            </thead>
+            <tbody className="text-text-secondary">
+              <ModeRow
+                config="Extension default (local engine, no AI)"
+                txg="Never contacted"
+                rpc="Sees the tx for simulation + registry lookup"
+                google="Never contacted"
+                primary
+              />
+              <ModeRow
+                config="Extension + AI translator enabled (your key)"
+                txg="Never contacted"
+                rpc="Sees the tx (as above)"
+                google="Sees decoded summaries + flags (your key used)"
+              />
+              <ModeRow
+                config="Extension hosted fallback (opt-in)"
+                txg="Sees the full transaction bytes"
+                rpc="(via our server, not yours)"
+                google="(via our server, our key)"
+                warn
+              />
+              <ModeRow
+                config="Web demo at /scan or /playground"
+                txg="Sees the full transaction bytes"
+                rpc="(via our server, not yours)"
+                google="(via our server, our key)"
+                warn
+              />
+            </tbody>
+          </table>
         </div>
+        <p className="mt-3 text-[13px] leading-[1.65] text-text-muted">
+          Your wallet&apos;s public key (the fee payer) is part of the
+          transaction payload in every mode because it has to be — it
+          identifies you on-chain. We never collect it separately.
+        </p>
       </section>
 
       <section className="mt-10">
@@ -208,5 +246,35 @@ export default function PrivacyPage() {
         </Link>
       </section>
     </div>
+  );
+}
+
+function ModeRow({
+  config,
+  txg,
+  rpc,
+  google,
+  primary,
+  warn,
+}: {
+  config: string;
+  txg: string;
+  rpc: string;
+  google: string;
+  primary?: boolean;
+  warn?: boolean;
+}) {
+  const tone = primary
+    ? "text-risk-safe"
+    : warn
+      ? "text-risk-caution"
+      : "text-text-secondary";
+  return (
+    <tr className="border-t border-border align-top">
+      <td className="px-3 py-2.5 text-text-primary">{config}</td>
+      <td className={`px-3 py-2.5 ${tone}`}>{txg}</td>
+      <td className="px-3 py-2.5">{rpc}</td>
+      <td className="px-3 py-2.5">{google}</td>
+    </tr>
   );
 }

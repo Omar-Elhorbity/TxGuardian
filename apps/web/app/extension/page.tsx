@@ -22,13 +22,15 @@ export default function ExtensionPage() {
           Browser extension · Chrome / Brave / Arc / Edge
         </p>
         <h1 className="text-[32px] font-semibold leading-[1.15] tracking-tight md:text-[40px]">
-          TxGuardian, in your browser.
+          See what you&apos;re signing.
+          <br className="hidden md:block" />
+          <span className="text-text-secondary">We don&apos;t.</span>
         </h1>
         <p className="mt-5 max-w-[600px] text-[15px] leading-[1.65] text-text-secondary">
-          Sits between your wallet and any Solana dApp. Every signing request
-          is intercepted, analyzed, and surfaced as a verdict overlay before
-          your wallet&apos;s own prompt appears. You decide. The wallet still
-          has the final say.
+          The whole verdict engine ships inside the extension. When a dApp
+          asks your wallet to sign, the check happens in your browser —
+          your transactions never reach our server. Verdicts in
+          milliseconds. The wallet still has the final say.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <a
@@ -44,8 +46,8 @@ export default function ExtensionPage() {
           </Link>
         </div>
         <p className="mt-3 text-[12px] text-text-muted">
-          ZIP, ~50 KB. Pre-built, points at the live analyzer by default —
-          no setup needed.
+          ZIP, ~50 KB. Pre-built; works out of the box with a default
+          Solana RPC. No accounts, no API keys, no setup.
         </p>
       </section>
 
@@ -67,8 +69,8 @@ export default function ExtensionPage() {
             icon={
               <ShieldCheck className="h-5 w-5" strokeWidth={1.75} aria-hidden />
             }
-            title="Verify"
-            body="Inspects what the transaction actually authorizes: drainer programs, unlimited token approvals, suspicious destinations. Cross-checks against a live on-chain registry of known-bad programs."
+            title="Check in your browser"
+            body="The full engine ships in the extension. It inspects the transaction against six rules + a live on-chain blocklist, all on your device. Your transactions never reach our server — we can't see them."
           />
           <FeatureCard
             icon={<ZapOff className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
