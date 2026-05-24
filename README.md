@@ -41,38 +41,33 @@ The default extension setup contacts neither our server nor any LLM provider. Ve
 ## Architecture
 
 ```
-EXTENSION  (the product — bundles the entire engine)
+EXTENSION  (bundles the engine; default install)
 ┌──────────────────────────────────────────────────────────────────┐
 │  page.ts (MAIN world)                                            │
-│    intercepts signTransaction → serializes → postMessage         │
+│    intercepts signTransaction → postMessage                      │
 │           ↓                                                      │
 │  service worker                                                  │
-│    runs @txguardian/sdk LOCALLY:                                │
+│    runs @txguardian/sdk on-device:                              │
 │      Parser    (legacy + v0 + ALT + Token-2022)                  │
 │      Decoder   (instruction summaries; memo stripped)            │
-│      Simulator (your RPC — sigVerify=false)                      │
-│      Registry  (your RPC — drainer + verified feeds)             │
-│      Rules     (deterministic — source of truth)                 │
+│      Simulator (user's RPC)                                      │
+│      Registry  (user's RPC — drainer + verified feeds)           │
+│      Rules     (deterministic)                                   │
 │      Scorer    (severity → 0–100 → recommendation)               │
-│    ┌─ optional: Translator (Google Gemini · YOUR key) ────────┐  │
-│    │  TxGuardian server NEVER involved in the LLM call        │  │
-│    └─────────────────────────────────────────────────────────────┘  │
+│    optional Translator → Google Gemini (user's key, direct)      │
 │           ↓                                                      │
 │  Shadow-DOM modal · user decides · wallet has the final say     │
 └──────────────────────────────────────────────────────────────────┘
 
-WEB SITE  (demo + docs — optional convenience)
+WEB DEMO  (server-side fallback for users without a setup)
 ┌──────────────────────────────────────────────────────────────────┐
-│  /scan, /playground  ──→  POST /api/analyze  (same engine, our   │
-│  RPC, our LLM key — for users without a personal setup)          │
+│  /scan, /playground  ──→  POST /api/analyze  (same engine)      │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-The killer property: with the engine running on the user's device, the verdict is something we *can't* influence. It's computed in code the user can audit and that matches a SHA256 published next to the download. The optional AI prose uses the user's own Gemini key and goes directly to Google — TxGuardian never sees the prose, the key, or the transaction.
+The verdict is deterministic. The LLM only writes the prose explanation; it can't raise, lower, or invent flags, and the recommendation is enum-locked to the engine's `riskLevel`.
 
-The engine itself is `@txguardian/sdk`, a TypeScript package inside this monorepo — runtime-agnostic (browser, Node, edge) since v1. Not published to npm yet, so external integrators currently need to clone the repo and import it as a workspace dependency (`workspace:*`). Publishing is a one-line release away.
-
-The deterministic engine is the source of truth on **risk**. The LLM only translates — it cannot raise, lower, or invent flags, and the recommendation is enum-locked to the deterministic level.
+The engine is `@txguardian/sdk` — TypeScript, runtime-agnostic (browser, Node, edge). Inside this monorepo; not yet published to npm.
 
 ## Risk flags
 
@@ -117,16 +112,16 @@ TxGuardian/
 │   │       └── registry/route.ts
 │   └── components/
 │
-├── apps/extension/                 # Browser extension (Manifest V3)
+├── apps/extension/                 # Browser extension (Manifest V3, the product)
 │   ├── src/
-│   │   ├── page.ts                 # MAIN-world wallet patches + modal
+│   │   ├── page.ts                 # MAIN-world wallet patches + verdict modal
 │   │   ├── content.ts              # ISOLATED bridge (page <-> service worker)
-│   │   ├── background.ts           # Service worker — POSTs /api/analyze
-│   │   ├── popup.html + popup.ts   # Toolbar popup: endpoint config + status
-│   │   ├── config.ts               # Default endpoint + storage keys
+│   │   ├── background.ts           # Service worker — runs the local engine
+│   │   ├── popup.html + popup.ts   # Toolbar popup: engine mode + RPC + AI key
+│   │   ├── config.ts               # Storage keys + defaults
 │   │   └── types.ts
 │   ├── public/icons/               # 16/32/48/128 PNG + source SVG
-│   ├── scripts/zip-dist.mjs        # Builds the downloadable extension zip
+│   ├── scripts/zip-dist.mjs        # Builds the downloadable zip + SHA256
 │   ├── manifest.config.ts
 │   ├── vite.config.ts
 │   └── dist/                       # Tracked in git for load-unpacked
@@ -139,25 +134,21 @@ TxGuardian/
 
 ## Install the extension
 
-Manifest V3 (Chrome / Brave / Arc / Edge). Defaults to the hosted analyzer at `tx-guardian-web.vercel.app` — zero configuration, no API keys to set.
+Manifest V3. Works in Chrome / Brave / Arc / Edge. Runs locally by default; no accounts, no API keys.
 
 1. Download [`txguardian-extension.zip`](https://tx-guardian-web.vercel.app/txguardian-extension.zip) and extract it
 2. `chrome://extensions` → toggle **Developer mode**
 3. Click **Load unpacked** → select the extracted folder
 
-Then open [`/demo-sign`](https://tx-guardian-web.vercel.app/demo-sign) to verify the extension is intercepting signing requests on this page.
-
-Walkthrough with screenshots at [`/extension`](https://tx-guardian-web.vercel.app/extension). Privacy details at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
+Verify it's intercepting at [`/demo-sign`](https://tx-guardian-web.vercel.app/demo-sign). Full install guide at [`/extension`](https://tx-guardian-web.vercel.app/extension) (with the SHA256 of the published zip for verification). Privacy details at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
 
 ## Try the engine without installing
 
-The same engine that powers the extension runs on the public demo at [`/scan`](https://tx-guardian-web.vercel.app/scan). Three input modes in one box:
+The public demo at [`/scan`](https://tx-guardian-web.vercel.app/scan) runs the same engine server-side. Accepts:
 
-- Pick a **sample** (Safe / Caution / Danger) to see the verdict shape
-- Paste a **Solana Explorer signature** (88-char base58) — the server fetches the transaction from RPC and runs the analyzer; useful for post-hoc analysis of any past tx
-- Paste a **base64 transaction** if you have one
-
-Useful for evaluating the engine, reproducing what a drainer victim signed, or testing your SDK integration without bundling anything.
+- A sample (Safe / Caution / Danger)
+- A Solana Explorer signature (88-char base58) — fetched from RPC and analyzed post-hoc
+- A raw base64 transaction
 
 ## Local setup (for contributors / self-hosting)
 
@@ -189,11 +180,17 @@ pnpm seed-registry         # populates the live registry with demo entries
 
 ```bash
 pnpm --filter @txguardian/extension package
-# → produces apps/extension/dist/ + apps/web/public/txguardian-extension.zip
-# Then chrome://extensions → Developer mode → Load unpacked → apps/extension/dist
+# → apps/extension/dist/  (load-unpacked target)
+# → apps/web/public/txguardian-extension.zip + .sha256.txt
 ```
 
-The extension popup lets you override the analyzer endpoint at runtime — point it at `http://localhost:3000/api/analyze` to test against your local dev server without rebuilding.
+The popup lets you switch between local engine (default) and hosted fallback at runtime, override the RPC, and bring your own Gemini key — no rebuild needed.
+
+**Tests** (Vitest, runs in CI):
+
+```bash
+pnpm --filter @txguardian/sdk test
+```
 
 ### Required env
 

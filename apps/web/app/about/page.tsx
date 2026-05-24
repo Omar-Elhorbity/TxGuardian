@@ -82,14 +82,12 @@ WEB SITE  (demo + docs — optional)
           </pre>
         </div>
         <p className="mt-3 text-[13px] leading-[1.65] text-text-muted">
-          The deterministic engine is the source of truth on risk. The
-          LLM is a translator only — it can&apos;t raise, lower, or invent
-          flags, and the recommendation is enum-locked to the
-          deterministic level. With the engine running on your device, the
-          verdict is something we can&apos;t influence: it&apos;s computed
-          in code you can audit and that matches the SHA256 published next
-          to the download. The optional AI prose uses your own Gemini key
-          and goes directly to Google — TxGuardian never sees it.
+          The deterministic engine decides risk. The LLM only writes the
+          prose explanation — it can&apos;t raise, lower, or invent flags,
+          and the recommendation is enum-locked to the engine&apos;s
+          verdict. The extension bundle is reproducible against the source
+          (SHA256 published next to the download). The AI step uses your
+          own Gemini key and goes directly to Google.
         </p>
       </section>
 
