@@ -3,6 +3,7 @@ import { analyze, ParseError } from "@txguardian/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
 import { getConnection } from "@/lib/rpc";
 import { jsonSafe } from "@/lib/json-safe";
+import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -13,29 +14,12 @@ export const runtime = "nodejs";
  */
 const MAX_INPUT_CHARS = 8192;
 
-const RATE_LIMIT_WINDOW_MS = 10_000;
-const RATE_LIMIT_MAX = 30;
-const ipHits = new Map<string, { count: number; reset: number }>();
-
-function rateLimit(ip: string): boolean {
-  const now = Date.now();
-  const hit = ipHits.get(ip);
-  if (!hit || hit.reset < now) {
-    ipHits.set(ip, { count: 1, reset: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (hit.count >= RATE_LIMIT_MAX) return false;
-  hit.count++;
-  return true;
-}
-
-function getClientIp(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
-  const real = request.headers.get("x-real-ip");
-  if (real) return real;
-  return "unknown";
-}
+/**
+ * Rate limit. /api/analyze is the expensive route (full SDK + RPC + LLM),
+ * so the limit is lower than /api/fixtures. Per-IP, in-memory, resets on
+ * cold start (acceptable for v1 traffic — see lib/rate-limit.ts).
+ */
+const limiter = createRateLimiter({ max: 30, windowMs: 10_000 });
 
 /**
  * Tx signatures are 64 bytes base58 — exactly 87 or 88 characters (varies by
@@ -65,7 +49,7 @@ function looksLikeSignature(s: string): boolean {
  */
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  if (!rateLimit(ip)) {
+  if (!limiter.check(ip)) {
     return NextResponse.json(
       { error: "Rate limit exceeded. Try again in a moment." },
       { status: 429 },
@@ -164,11 +148,13 @@ export async function POST(request: Request) {
         slot: fetched.slot,
         blockTime: fetched.blockTime ?? null,
       };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+    } catch {
+      // Don't leak raw RPC errors to the client — they can reveal the
+      // RPC provider, library versions, and other infrastructure details.
+      // The kind hint is enough for the UI to render the right message.
       return NextResponse.json(
         {
-          error: `Could not fetch transaction from RPC: ${msg}`,
+          error: "Could not fetch transaction from the RPC.",
           kind: "rpc_error",
         },
         { status: 502 },
