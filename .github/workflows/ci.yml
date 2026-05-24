@@ -1,0 +1,94 @@
+# Continuous integration for TxGuardian.
+#
+# Runs on every push to main and every pull request. Three parallel jobs:
+#   1. typecheck — all three workspaces (sdk + web + extension)
+#   2. test — SDK rule + scorer + parser tests
+#   3. build — web app + extension (catches bundler regressions early)
+#
+# All jobs share the same pnpm install step via the setup action's cache.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same ref when a new commit arrives.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's
+      # `packageManager` field (pnpm@9.12.0). Don't pin here too — having
+      # two pinned versions makes setup-node's corepack lookup fight with
+      # the action's globally-installed binary ("multiple pnpm versions"
+      # error). Order matters: pnpm action must run BEFORE setup-node so
+      # setup-node's pnpm cache resolution sees the global binary.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck SDK
+        run: pnpm --filter @txguardian/sdk typecheck
+      - name: Typecheck web
+        run: pnpm --filter @txguardian/web typecheck
+      - name: Typecheck extension
+        run: pnpm --filter @txguardian/extension typecheck
+
+  test:
+    name: SDK tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's
+      # `packageManager` field (pnpm@9.12.0). Don't pin here too — having
+      # two pinned versions makes setup-node's corepack lookup fight with
+      # the action's globally-installed binary ("multiple pnpm versions"
+      # error). Order matters: pnpm action must run BEFORE setup-node so
+      # setup-node's pnpm cache resolution sees the global binary.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: SDK tests (vitest)
+        run: pnpm --filter @txguardian/sdk test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's
+      # `packageManager` field (pnpm@9.12.0). Don't pin here too — having
+      # two pinned versions makes setup-node's corepack lookup fight with
+      # the action's globally-installed binary ("multiple pnpm versions"
+      # error). Order matters: pnpm action must run BEFORE setup-node so
+      # setup-node's pnpm cache resolution sees the global binary.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build extension (also produces the downloadable zip)
+        run: pnpm --filter @txguardian/extension package
+      - name: Build web app
+        run: pnpm --filter @txguardian/web build
+      - name: Verify extension zip is produced + report SHA256
+        run: |
+          ZIP=apps/web/public/txguardian-extension.zip
+          test -f "$ZIP" || { echo "Zip missing"; exit 1; }
+          echo "Zip size: $(stat -c %s "$ZIP") bytes"
+          echo "SHA256:   $(sha256sum "$ZIP" | awk '{print $1}')"
