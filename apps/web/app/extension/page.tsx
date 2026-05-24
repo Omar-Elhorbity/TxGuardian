@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,6 +13,29 @@ import pkg from "../../../extension/package.json";
 
 const EXTENSION_VERSION = pkg.version;
 const DOWNLOAD_HREF = "/txguardian-extension.zip";
+
+/**
+ * Read the build-time SHA256 of the downloadable extension zip so the
+ * page can show it next to the download link. The prebuild hook
+ * (apps/extension/scripts/zip-dist.mjs) writes
+ * apps/web/public/txguardian-extension.sha256.txt — present in every
+ * deploy that ran the prebuild. If the file is missing (dev server
+ * without a prior build), we fall back to a dash so the page still
+ * renders.
+ */
+function readExtensionSha256(): string | null {
+  try {
+    const path = join(
+      process.cwd(),
+      "public",
+      "txguardian-extension.sha256.txt",
+    );
+    return readFileSync(path, "utf-8").trim() || null;
+  } catch {
+    return null;
+  }
+}
+const EXTENSION_SHA256 = readExtensionSha256();
 
 export default function ExtensionPage() {
   return (
@@ -49,6 +74,19 @@ export default function ExtensionPage() {
           ZIP, ~50 KB. Pre-built; works out of the box with a default
           Solana RPC. No accounts, no API keys, no setup.
         </p>
+        {EXTENSION_SHA256 && (
+          <p className="mt-2 text-[11px] text-text-muted">
+            SHA256:{" "}
+            <code className="break-all font-mono text-[11px] text-text-secondary">
+              {EXTENSION_SHA256}
+            </code>
+            <br />
+            Verify locally:{" "}
+            <code className="font-mono text-[11px] text-text-secondary">
+              shasum -a 256 txguardian-extension.zip
+            </code>
+          </p>
+        )}
       </section>
 
       {/* What it does */}
