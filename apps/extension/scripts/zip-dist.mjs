@@ -11,12 +11,15 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +28,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const distDir = resolve(here, "..", "dist");
 const outDir = resolve(here, "..", "..", "web", "public");
 const outZip = resolve(outDir, "txguardian-extension.zip");
+const outSha = resolve(outDir, "txguardian-extension.sha256.txt");
 
 if (!existsSync(distDir) || readdirSync(distDir).length === 0) {
   console.error(
@@ -55,3 +59,10 @@ try {
 const sizeKB = (statSync(outZip).size / 1024).toFixed(1);
 const rel = outZip.replace(resolve(here, "..", "..", ".."), "");
 console.log(`[zip-dist] wrote ${rel} (${sizeKB} KB)`);
+
+// Write SHA256 alongside so the /extension page can render it next to the
+// download link. Lets users (and Chrome Web Store reviewers) verify that
+// the published binary matches the source at the tagged commit.
+const sha = createHash("sha256").update(readFileSync(outZip)).digest("hex");
+writeFileSync(outSha, sha + "\n", "utf-8");
+console.log(`[zip-dist] SHA256: ${sha}`);
