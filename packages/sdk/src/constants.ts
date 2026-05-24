@@ -1,10 +1,14 @@
 /**
  * Well-known program IDs and a curated drainer blocklist.
  *
- * The KNOWN_PROGRAMS allowlist is deliberately conservative — programs not on the
- * list are flagged UNKNOWN_PROGRAM, prompting the user to look more carefully.
- * False positives are intentional: a "this program isn't widely recognized" flag
- * is far less harmful than missing a malicious program.
+ * The KNOWN_PROGRAMS allowlist is the static fallback for "this program is
+ * known-legitimate." Anything not on this list AND not on the on-chain
+ * verified-attestation feed earns a LOW-severity UNKNOWN_PROGRAM flag.
+ * Severity is intentionally low — the Solana ecosystem grows daily and a
+ * static allowlist can't keep up. The flag is informational; it only
+ * meaningfully affects the verdict when combined with other findings.
+ * (Long-term home for new entries is the on-chain verified registry;
+ * additions to this static list should still cite a public source.)
  *
  * The KNOWN_DRAINERS blocklist is sourced from public security disclosures.
  * It is intentionally short: the goal is high precision (no false positives),
@@ -107,6 +111,106 @@ export const KNOWN_PROGRAMS: Record<string, KnownProgram> = {
     name: "Metaplex Token Metadata",
     description: "NFT metadata standard.",
   },
+
+  // ─── Expanded mainstream programs (added 2026-05) ────────────────────
+  // Sourced from publicly documented program IDs on each protocol's docs
+  // site or on Solscan's verified-program registry. Inclusion criterion:
+  // significant mainnet usage + publicly auditable program ID. Add new
+  // entries with a citation in the trailing comment.
+
+  // DEX & swap
+  PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY: {
+    name: "Phoenix",
+    description: "Order-book DEX.",
+  }, // phoenix.trade/
+
+  // Perps / margin / lending
+  MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA: {
+    name: "Marginfi v2",
+    description: "Lending / margin protocol.",
+  }, // app.marginfi.com docs
+  So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo: {
+    name: "Solend",
+    description: "Lending protocol.",
+  }, // solend.fi docs
+
+  // Liquid staking / stake pools
+  Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Awbb: {
+    name: "Jito Stake Pool",
+    description: "JitoSOL liquid staking.",
+  }, // jito.network docs
+  SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy: {
+    name: "SPL Stake Pool",
+    description: "Generic stake-pool program (Lido, others).",
+  }, // github.com/solana-labs/solana-program-library/tree/master/stake-pool
+  CrX7kMhLC3cSsXJdT7JDgqrRVWGnUpX3gfEfxxU2NVLi: {
+    name: "Lido for Solana",
+    description: "stSOL liquid staking.",
+  }, // docs.solana.lido.fi/contracts/solido
+  "5ocnV1qiCgaQR8Jb8xWnVbApfaygJ8tNoZfgPwsgx9kx": {
+    name: "Sanctum LST router",
+    description: "Liquid staking token routing.",
+  }, // sanctum.so docs
+
+  // Oracle infrastructure (appear in many composed transactions)
+  FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH: {
+    name: "Pyth Oracle",
+    description: "Price oracle network.",
+  }, // pyth.network docs
+  SW1TCH7qEPTdLsDHRgPuMQjbQxKdH2aBStViMFnt64f: {
+    name: "Switchboard v2",
+    description: "Decentralized oracle network.",
+  }, // docs.switchboard.xyz
+
+  // Cross-chain
+  worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth: {
+    name: "Wormhole Core Bridge",
+    description: "Cross-chain messaging.",
+  }, // wormhole.com docs
+  wormDTUJ6AWPNvk59vGQbDvGJmqbDTdgWgAqcLBCgUb: {
+    name: "Wormhole Token Bridge",
+    description: "Cross-chain token transfers.",
+  }, // wormhole.com docs
+
+  // Jupiter ecosystem
+  jupoNjAxXgZ4rjzxzPMP4oxduvQsQtZzyknqvzYNrNu: {
+    name: "Jupiter Limit Order",
+    description: "Limit orders on Jupiter.",
+  }, // station.jup.ag/docs
+  DCA265Vj8a9CEuX1eb1LWRnDT7uK6q1xMipnNyatn23M: {
+    name: "Jupiter DCA",
+    description: "Dollar-cost averaging on Jupiter.",
+  }, // station.jup.ag/docs
+
+  // NFT / cNFT
+  BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY: {
+    name: "Metaplex Bubblegum",
+    description: "Compressed NFT (cNFT) program.",
+  }, // developers.metaplex.com/bubblegum
+  CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d: {
+    name: "Metaplex Core",
+    description: "Lightweight next-gen NFT standard.",
+  }, // developers.metaplex.com/core
+  hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk: {
+    name: "Metaplex Auction House",
+    description: "Decentralized NFT marketplace primitive.",
+  }, // developers.metaplex.com/auction-house
+
+  // Account & data infrastructure
+  cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK: {
+    name: "SPL Account Compression",
+    description: "Concurrent Merkle tree primitive (cNFTs depend on it).",
+  }, // github.com/solana-labs/solana-program-library/tree/master/account-compression
+  noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV: {
+    name: "SPL Noop",
+    description: "Logging primitive used by account-compression.",
+  }, // github.com/solana-labs/solana-program-library/tree/master/account-compression/programs/noop
+
+  // Address Lookup Tables — appear in any v0 transaction using ALTs
+  AddressLookupTab1e1111111111111111111111111: {
+    name: "Address Lookup Table",
+    description: "Solana ALT program (referenced by v0 transactions).",
+  }, // docs.solana.com/developing/lookup-tables
 };
 
 /**

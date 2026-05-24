@@ -207,6 +207,7 @@ export async function fetchAllAttestations(
 export function invalidateAttestationCaches(): void {
   confirmedCache.clear();
   allCache.clear();
+  verifiedConfirmedCache.clear();
 }
 
 /**
@@ -279,4 +280,164 @@ export async function fetchRegistry(
   } catch {
     return null;
   }
+}
+
+// ─── Verified-program attestations (positive feedback path) ─────────────
+//
+// Counterpart to the drainer attestations above. Same admin-curated
+// lifecycle, different PDA seed prefix ("verified") and a different
+// Anchor account type (VerifiedAttestation). Consumed by
+// detectUnknownPrograms to suppress the UNKNOWN_PROGRAM flag for programs
+// the community has positively reviewed.
+//
+// Becomes active once the on-chain program is redeployed with the
+// VerifiedAttestation account type. Until then fetchVerifiedAttestations
+// returns an empty array (no matching accounts on chain yet), which is
+// safe — the rule simply doesn't suppress anything extra.
+
+export interface VerifiedAttestation {
+  /** Solana program positively attested as safe (base58). */
+  targetProgram: string;
+  /** Lifecycle status. */
+  status: AttestationStatus;
+  /** Submitter pubkey (base58). */
+  submitter: string;
+  /** Admin who confirmed or revoked. `null` while still pending. */
+  attestedBy: string | null;
+  /** Unix seconds. */
+  submittedAt: number;
+  /** Unix seconds at last status change. */
+  updatedAt: number;
+  /**
+   * Free-form short note from the submitter (project name, audit ref).
+   * UNTRUSTED — same handling as `OnChainAttestation.reason`.
+   */
+  note: string;
+}
+
+const VERIFIED_DISCRIMINATOR: Buffer = createHash("sha256")
+  .update("account:VerifiedAttestation")
+  .digest()
+  .subarray(0, 8);
+
+/**
+ * On-chain layout from state.rs VerifiedAttestation:
+ *   discriminator(8) | target_program(32) | status(1) | submitter(32) |
+ *   attested_by(32) | created_at(8) | updated_at(8) | note(64) | bump(1)
+ */
+const VERIFIED_ACCOUNT_SIZE = 8 + 32 + 1 + 32 + 32 + 8 + 8 + 64 + 1; // 186
+const VERIFIED_STATUS_OFFSET = 8 + 32; // 40
+
+function deserializeVerified(
+  data: Buffer | Uint8Array,
+): VerifiedAttestation | null {
+  const buf = Buffer.from(data);
+  if (buf.length !== VERIFIED_ACCOUNT_SIZE) return null;
+  if (!buf.subarray(0, 8).equals(VERIFIED_DISCRIMINATOR)) return null;
+
+  const targetProgram = new PublicKey(buf.subarray(8, 40)).toBase58();
+  const statusByte = buf.readUInt8(40);
+  const status: AttestationStatus =
+    statusByte === STATUS_PENDING_BYTE
+      ? "pending"
+      : statusByte === STATUS_CONFIRMED_BYTE
+        ? "confirmed"
+        : statusByte === STATUS_REVOKED_BYTE
+          ? "revoked"
+          : "pending";
+
+  const submitter = new PublicKey(buf.subarray(41, 73)).toBase58();
+  const attestedByRaw = new PublicKey(buf.subarray(73, 105)).toBase58();
+  const createdAt = Number(buf.readBigInt64LE(105));
+  const updatedAt = Number(buf.readBigInt64LE(113));
+
+  const noteBytes = buf.subarray(121, 185);
+  const nullIndex = noteBytes.indexOf(0);
+  const note = (
+    nullIndex === -1 ? noteBytes : noteBytes.subarray(0, nullIndex)
+  ).toString("utf8");
+
+  return {
+    targetProgram,
+    status,
+    submitter,
+    attestedBy: attestedByRaw === PENDING_PUBKEY_B58 ? null : attestedByRaw,
+    submittedAt: createdAt,
+    updatedAt,
+    note,
+  };
+}
+
+const verifiedConfirmedCache: Map<
+  string,
+  { value: VerifiedAttestation[]; expiry: number }
+> = new Map();
+
+function buildVerifiedBaseFilters(): GetProgramAccountsFilter[] {
+  return [
+    { dataSize: VERIFIED_ACCOUNT_SIZE },
+    {
+      memcmp: {
+        offset: 0,
+        bytes: bs58.encode(VERIFIED_DISCRIMINATOR),
+      },
+    },
+  ];
+}
+
+/**
+ * Fetch CONFIRMED verified-program attestations. Cached for 60s by RPC URL.
+ * Best-effort: errors return an empty array (rule simply doesn't suppress
+ * any extra programs). Returns empty until the on-chain program has been
+ * redeployed with the VerifiedAttestation account type.
+ */
+export async function fetchVerifiedAttestations(
+  connection: Connection,
+  programId: string = TXGUARDIAN_REGISTRY_PROGRAM_ID,
+): Promise<VerifiedAttestation[]> {
+  const cacheKey = `${connection.rpcEndpoint}|${programId}`;
+  const hit = verifiedConfirmedCache.get(cacheKey);
+  if (hit && hit.expiry > Date.now()) return hit.value;
+
+  try {
+    const filters: GetProgramAccountsFilter[] = [
+      ...buildVerifiedBaseFilters(),
+      {
+        memcmp: {
+          offset: VERIFIED_STATUS_OFFSET,
+          bytes: bs58.encode(Buffer.from([STATUS_CONFIRMED_BYTE])),
+        },
+      },
+    ];
+    const accounts = await connection.getProgramAccounts(
+      new PublicKey(programId),
+      { filters },
+    );
+    const attestations = accounts
+      .map(({ account }) => deserializeVerified(account.data))
+      .filter((a): a is VerifiedAttestation => a !== null);
+
+    verifiedConfirmedCache.set(cacheKey, {
+      value: attestations,
+      expiry: Date.now() + CACHE_TTL_MS,
+    });
+    return attestations;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Derive the PDA where a VerifiedAttestation for a given target program
+ * lives. Matches `seeds = [b"verified", target_program.as_ref()]` in
+ * submit_verified.rs.
+ */
+export function deriveVerifiedAttestationPda(
+  targetProgram: PublicKey,
+  programId: string = TXGUARDIAN_REGISTRY_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("verified"), targetProgram.toBuffer()],
+    new PublicKey(programId),
+  );
 }

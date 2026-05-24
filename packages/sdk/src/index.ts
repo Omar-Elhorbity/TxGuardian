@@ -5,7 +5,12 @@ import { simulateSafely } from "./simulate";
 import { runRules } from "./rules/index";
 import { scoreFlags } from "./scorer";
 import { explainCached } from "./explain";
-import { fetchConfirmedAttestations, type OnChainAttestation } from "./registry";
+import {
+  fetchConfirmedAttestations,
+  fetchVerifiedAttestations,
+  type OnChainAttestation,
+  type VerifiedAttestation,
+} from "./registry";
 
 /**
  * Public SDK entry point. Analyzes a Solana transaction and returns a
@@ -32,6 +37,7 @@ export async function analyze(
 
   let simulation;
   let onChainAttestations: OnChainAttestation[] = [];
+  let verifiedAttestations: VerifiedAttestation[] = [];
   if (mode === "full") {
     try {
       const vtx = toVersionedTransaction(options.transaction);
@@ -40,16 +46,19 @@ export async function analyze(
       // Simulation is best-effort; never block the verdict on it.
       simulation = undefined;
     }
-    // Same isolation pattern: an RPC failure on the registry feed never
-    // blocks the verdict. The drainer rule treats [] as "no on-chain data,
-    // hardcoded list still applies."
-    try {
-      onChainAttestations = await fetchConfirmedAttestations(
-        options.connection,
-      );
-    } catch {
-      onChainAttestations = [];
-    }
+    // Fetch both attestation feeds in parallel. Same isolation pattern as
+    // simulation: an RPC failure on either feed never blocks the verdict.
+    // [] from drainer feed → hardcoded list still applies.
+    // [] from verified feed → no extra programs suppressed beyond the
+    // hardcoded allowlist.
+    const [drainerRes, verifiedRes] = await Promise.allSettled([
+      fetchConfirmedAttestations(options.connection),
+      fetchVerifiedAttestations(options.connection),
+    ]);
+    onChainAttestations =
+      drainerRes.status === "fulfilled" ? drainerRes.value : [];
+    verifiedAttestations =
+      verifiedRes.status === "fulfilled" ? verifiedRes.value : [];
   }
 
   const flags = runRules({
@@ -59,6 +68,7 @@ export async function analyze(
     ...(simulation !== undefined ? { simulation } : {}),
     ...(options.publicKey ? { signer: options.publicKey.toBase58() } : {}),
     onChainAttestations,
+    verifiedAttestations,
   });
 
   const { score, riskLevel, recommendation } = scoreFlags(flags);
@@ -131,6 +141,7 @@ export type {
   OnChainAttestation,
   AttestationStatus,
   AttestationSeverity,
+  VerifiedAttestation,
 } from "./registry";
 export type { RegistrySummary } from "./registry";
 export {
@@ -138,7 +149,9 @@ export {
   fetchConfirmedAttestations,
   fetchAllAttestations,
   fetchRegistry,
+  fetchVerifiedAttestations,
   invalidateAttestationCaches,
   deriveAttestationPda,
+  deriveVerifiedAttestationPda,
   deriveRegistryPda,
 } from "./registry";
