@@ -4,7 +4,78 @@ import {
   type GetProgramAccountsFilter,
 } from "@solana/web3.js";
 import bs58 from "bs58";
-import { createHash } from "node:crypto";
+
+/**
+ * Anchor account discriminators are sha256("account:<Name>")[0..8]. We
+ * pre-compute them as constants instead of running `createHash` at module
+ * load, which would require Node's `node:crypto` and break the SDK in
+ * browser contexts (the extension service worker, in particular).
+ *
+ * To reproduce these values:
+ *
+ *   node -e 'const {createHash} = require("crypto");
+ *     const d = name => Array.from(createHash("sha256").update("account:"+name).digest().subarray(0,8));
+ *     console.log("Attestation:        ", d("Attestation"));
+ *     console.log("Registry:           ", d("Registry"));
+ *     console.log("VerifiedAttestation:", d("VerifiedAttestation"));'
+ *
+ * If you change an Anchor account name in programs/txguardian-registry/src/state.rs,
+ * recompute the corresponding discriminator here.
+ */
+const ATTESTATION_DISCRIMINATOR = new Uint8Array([
+  0x98, 0x7d, 0xb7, 0x56, 0x24, 0x92, 0x79, 0x49,
+]);
+const REGISTRY_DISCRIMINATOR = new Uint8Array([
+  0x2f, 0xae, 0x6e, 0xf6, 0xb8, 0xb6, 0xfc, 0xda,
+]);
+const VERIFIED_DISCRIMINATOR = new Uint8Array([
+  0x7d, 0xcb, 0x49, 0x44, 0xae, 0xfc, 0x9e, 0x16,
+]);
+
+// ─── Universal byte helpers (browser + Node, no Buffer dependency) ──────
+
+/** Equality check for two byte sequences. Length-checked. */
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * Construct a DataView positioned over the given Uint8Array. Uint8Array
+ * doesn't have read*LE methods (those are Node Buffer extensions); DataView
+ * is the universal answer.
+ */
+function viewOf(buf: Uint8Array): DataView {
+  return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
+/** Read an unsigned little-endian 64-bit integer as a JS BigInt. */
+function readBigUInt64LE(buf: Uint8Array, offset: number): bigint {
+  return viewOf(buf).getBigUint64(offset, true);
+}
+
+/** Read a signed little-endian 64-bit integer as a JS BigInt. */
+function readBigInt64LE(buf: Uint8Array, offset: number): bigint {
+  return viewOf(buf).getBigInt64(offset, true);
+}
+
+/** Decode null-padded UTF-8 bytes into a JS string, stopping at the first NUL. */
+function decodeNullPaddedUtf8(bytes: Uint8Array): string {
+  const nullIndex = bytes.indexOf(0);
+  const slice = nullIndex === -1 ? bytes : bytes.subarray(0, nullIndex);
+  return new TextDecoder("utf-8").decode(slice);
+}
+
+/** Coerce arbitrary RPC return shape (Buffer | Uint8Array) into Uint8Array. */
+function toUint8(data: ArrayBufferLike | Uint8Array | number[]): Uint8Array {
+  if (data instanceof Uint8Array) return data;
+  return new Uint8Array(data as ArrayBufferLike);
+}
+
+// ─── Drainer attestations ───────────────────────────────────────────────
 
 /**
  * Live devnet program id for the TxGuardian on-chain risk attestation
@@ -41,15 +112,6 @@ export interface OnChainAttestation {
 }
 
 /**
- * Anchor 0.30/0.32 default account discriminator: sha256("account:<Name>")[0..8].
- * Computed once at module load.
- */
-const ATTESTATION_DISCRIMINATOR: Buffer = createHash("sha256")
-  .update("account:Attestation")
-  .digest()
-  .subarray(0, 8);
-
-/**
  * On-chain layout from programs/txguardian-registry/src/state.rs:
  *
  *   discriminator(8) | target_program(32) | severity(1) | status(1) |
@@ -64,17 +126,19 @@ const STATUS_REVOKED_BYTE = 2;
 
 const PENDING_PUBKEY_B58 = "11111111111111111111111111111111";
 
-function deserialize(data: Buffer | Uint8Array): OnChainAttestation | null {
-  const buf = Buffer.from(data);
+function deserialize(
+  data: ArrayBufferLike | Uint8Array | number[],
+): OnChainAttestation | null {
+  const buf = toUint8(data);
   if (buf.length !== ACCOUNT_SIZE) return null;
-  if (!buf.subarray(0, 8).equals(ATTESTATION_DISCRIMINATOR)) return null;
+  if (!bytesEqual(buf.subarray(0, 8), ATTESTATION_DISCRIMINATOR)) return null;
 
   const targetProgram = new PublicKey(buf.subarray(8, 40)).toBase58();
-  const severityByte = buf.readUInt8(40);
+  const severityByte = buf[40]!;
   if (severityByte < 1 || severityByte > 3) return null;
   const severity = severityByte as AttestationSeverity;
 
-  const statusByte = buf.readUInt8(41);
+  const statusByte = buf[41]!;
   const status: AttestationStatus =
     statusByte === STATUS_PENDING_BYTE
       ? "pending"
@@ -86,15 +150,9 @@ function deserialize(data: Buffer | Uint8Array): OnChainAttestation | null {
 
   const submitter = new PublicKey(buf.subarray(42, 74)).toBase58();
   const attestedByRaw = new PublicKey(buf.subarray(74, 106)).toBase58();
-  const createdAt = Number(buf.readBigInt64LE(106));
-  const updatedAt = Number(buf.readBigInt64LE(114));
-
-  // Reason is a fixed [u8; 64] null-padded utf-8 string.
-  const reasonBytes = buf.subarray(122, 186);
-  const nullIndex = reasonBytes.indexOf(0);
-  const reason = (
-    nullIndex === -1 ? reasonBytes : reasonBytes.subarray(0, nullIndex)
-  ).toString("utf8");
+  const createdAt = Number(readBigInt64LE(buf, 106));
+  const updatedAt = Number(readBigInt64LE(buf, 114));
+  const reason = decodeNullPaddedUtf8(buf.subarray(122, 186));
 
   return {
     targetProgram,
@@ -147,7 +205,7 @@ export async function fetchConfirmedAttestations(
       {
         memcmp: {
           offset: STATUS_OFFSET,
-          bytes: bs58.encode(Buffer.from([STATUS_CONFIRMED_BYTE])),
+          bytes: bs58.encode(new Uint8Array([STATUS_CONFIRMED_BYTE])),
         },
       },
     ];
@@ -201,7 +259,7 @@ export async function fetchAllAttestations(
 }
 
 /**
- * Clear in-memory caches for both fetch functions. Call after a fresh
+ * Clear in-memory caches for all fetch functions. Call after a fresh
  * submit/attest from the /registry page so the next read sees the change.
  */
 export function invalidateAttestationCaches(): void {
@@ -220,7 +278,7 @@ export function deriveAttestationPda(
   programId: string = TXGUARDIAN_REGISTRY_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("attestation"), targetProgram.toBuffer()],
+    [new TextEncoder().encode("attestation"), targetProgram.toBuffer()],
     new PublicKey(programId),
   );
 }
@@ -232,17 +290,12 @@ export function deriveRegistryPda(
   programId: string = TXGUARDIAN_REGISTRY_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("registry")],
+    [new TextEncoder().encode("registry")],
     new PublicKey(programId),
   );
 }
 
-// --- Registry singleton (admin + counters) ----------------------------------
-
-const REGISTRY_DISCRIMINATOR: Buffer = createHash("sha256")
-  .update("account:Registry")
-  .digest()
-  .subarray(0, 8);
+// ─── Registry singleton (admin + counters) ──────────────────────────────
 
 /**
  * On-chain layout: discriminator(8) | admin(32) | submission_count(8) |
@@ -271,11 +324,11 @@ export async function fetchRegistry(
     const [pda] = deriveRegistryPda(programId);
     const info = await connection.getAccountInfo(pda);
     if (!info || info.data.length !== REGISTRY_SIZE) return null;
-    const buf = Buffer.from(info.data);
-    if (!buf.subarray(0, 8).equals(REGISTRY_DISCRIMINATOR)) return null;
+    const buf = toUint8(info.data);
+    if (!bytesEqual(buf.subarray(0, 8), REGISTRY_DISCRIMINATOR)) return null;
     const admin = new PublicKey(buf.subarray(8, 40)).toBase58();
-    const submissionCount = Number(buf.readBigUInt64LE(40));
-    const confirmedCount = Number(buf.readBigUInt64LE(48));
+    const submissionCount = Number(readBigUInt64LE(buf, 40));
+    const confirmedCount = Number(readBigUInt64LE(buf, 48));
     return { admin, submissionCount, confirmedCount };
   } catch {
     return null;
@@ -315,11 +368,6 @@ export interface VerifiedAttestation {
   note: string;
 }
 
-const VERIFIED_DISCRIMINATOR: Buffer = createHash("sha256")
-  .update("account:VerifiedAttestation")
-  .digest()
-  .subarray(0, 8);
-
 /**
  * On-chain layout from state.rs VerifiedAttestation:
  *   discriminator(8) | target_program(32) | status(1) | submitter(32) |
@@ -329,14 +377,14 @@ const VERIFIED_ACCOUNT_SIZE = 8 + 32 + 1 + 32 + 32 + 8 + 8 + 64 + 1; // 186
 const VERIFIED_STATUS_OFFSET = 8 + 32; // 40
 
 function deserializeVerified(
-  data: Buffer | Uint8Array,
+  data: ArrayBufferLike | Uint8Array | number[],
 ): VerifiedAttestation | null {
-  const buf = Buffer.from(data);
+  const buf = toUint8(data);
   if (buf.length !== VERIFIED_ACCOUNT_SIZE) return null;
-  if (!buf.subarray(0, 8).equals(VERIFIED_DISCRIMINATOR)) return null;
+  if (!bytesEqual(buf.subarray(0, 8), VERIFIED_DISCRIMINATOR)) return null;
 
   const targetProgram = new PublicKey(buf.subarray(8, 40)).toBase58();
-  const statusByte = buf.readUInt8(40);
+  const statusByte = buf[40]!;
   const status: AttestationStatus =
     statusByte === STATUS_PENDING_BYTE
       ? "pending"
@@ -348,14 +396,9 @@ function deserializeVerified(
 
   const submitter = new PublicKey(buf.subarray(41, 73)).toBase58();
   const attestedByRaw = new PublicKey(buf.subarray(73, 105)).toBase58();
-  const createdAt = Number(buf.readBigInt64LE(105));
-  const updatedAt = Number(buf.readBigInt64LE(113));
-
-  const noteBytes = buf.subarray(121, 185);
-  const nullIndex = noteBytes.indexOf(0);
-  const note = (
-    nullIndex === -1 ? noteBytes : noteBytes.subarray(0, nullIndex)
-  ).toString("utf8");
+  const createdAt = Number(readBigInt64LE(buf, 105));
+  const updatedAt = Number(readBigInt64LE(buf, 113));
+  const note = decodeNullPaddedUtf8(buf.subarray(121, 185));
 
   return {
     targetProgram,
@@ -405,7 +448,7 @@ export async function fetchVerifiedAttestations(
       {
         memcmp: {
           offset: VERIFIED_STATUS_OFFSET,
-          bytes: bs58.encode(Buffer.from([STATUS_CONFIRMED_BYTE])),
+          bytes: bs58.encode(new Uint8Array([STATUS_CONFIRMED_BYTE])),
         },
       },
     ];
@@ -437,7 +480,7 @@ export function deriveVerifiedAttestationPda(
   programId: string = TXGUARDIAN_REGISTRY_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("verified"), targetProgram.toBuffer()],
+    [new TextEncoder().encode("verified"), targetProgram.toBuffer()],
     new PublicKey(programId),
   );
 }
