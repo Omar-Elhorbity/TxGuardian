@@ -2,8 +2,17 @@ import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { FIXTURES, type FixtureId } from "@/lib/fixtures";
 import { getConnection } from "@/lib/rpc";
+import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+
+/**
+ * Rate limit. /api/fixtures is cheap (just builds a tx) but it does call
+ * the RPC for a fresh blockhash on signable samples. Limit is higher than
+ * /api/analyze to keep the demo snappy under normal use, low enough that
+ * an attacker can't burn RPC quota. Per-IP, in-memory.
+ */
+const limiter = createRateLimiter({ max: 60, windowMs: 10_000 });
 
 /**
  * GET /api/fixtures?type=safe|caution|danger&payer=<base58>?
@@ -16,6 +25,13 @@ export const runtime = "nodejs";
  *   fetches a fresh blockhash so the connected wallet can sign + submit.
  */
 export async function GET(request: Request) {
+  if (!limiter.check(getClientIp(request))) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again in a moment." },
+      { status: 429 },
+    );
+  }
+
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
   const payerStr = url.searchParams.get("payer");
