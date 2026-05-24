@@ -26,9 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's
+      # `packageManager` field (pnpm@9.12.0). Don't pin here too — having
+      # two pinned versions makes setup-node's corepack lookup fight with
+      # the action's globally-installed binary ("multiple pnpm versions"
+      # error). Order matters: pnpm action must run BEFORE setup-node so
+      # setup-node's pnpm cache resolution sees the global binary.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -46,9 +50,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's
+      # `packageManager` field (pnpm@9.12.0). Don't pin here too — having
+      # two pinned versions makes setup-node's corepack lookup fight with
+      # the action's globally-installed binary ("multiple pnpm versions"
+      # error). Order matters: pnpm action must run BEFORE setup-node so
+      # setup-node's pnpm cache resolution sees the global binary.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -62,9 +70,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's
+      # `packageManager` field (pnpm@9.12.0). Don't pin here too — having
+      # two pinned versions makes setup-node's corepack lookup fight with
+      # the action's globally-installed binary ("multiple pnpm versions"
+      # error). Order matters: pnpm action must run BEFORE setup-node so
+      # setup-node's pnpm cache resolution sees the global binary.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
