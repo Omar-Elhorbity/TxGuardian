@@ -27,6 +27,7 @@ import {
   STORAGE_KEY_LLM_MODEL,
   STORAGE_KEY_MODE,
   STORAGE_KEY_RPC,
+  STORAGE_KEY_SHOW_WELCOME,
 } from "./config";
 
 const RPC_TEST_TIMEOUT_MS = 5000;
@@ -76,6 +77,12 @@ const llmResult = $<HTMLDivElement>("llm-test-result");
 const linkExtension = $<HTMLAnchorElement>("link-extension");
 const linkPrivacy = $<HTMLAnchorElement>("link-privacy");
 
+const welcomePanel = $<HTMLDivElement>("welcome");
+const welcomeDismiss = $<HTMLButtonElement>("welcome-dismiss");
+const aiDetails = $<HTMLDetailsElement>("ai-details");
+const aiState = $<HTMLSpanElement>("ai-state");
+const privacyReadout = $<HTMLDivElement>("privacy-readout");
+
 // ─── Init ───────────────────────────────────────────────────────────────
 
 linkExtension.href = `${HOSTED_SITE_URL}/extension`;
@@ -86,6 +93,14 @@ void init();
 
 async function init(): Promise<void> {
   const cfg = await loadConfig();
+
+  // Welcome panel: show if the SW set the flag on install/update.
+  if (cfg.showWelcome) {
+    welcomePanel.hidden = false;
+    // Auto-expand the AI details so users see all the options the first
+    // time. Closed by default on subsequent opens.
+    aiDetails.open = true;
+  }
 
   // Mode
   if (cfg.mode === "hosted") {
@@ -107,9 +122,16 @@ async function init(): Promise<void> {
   if (cfg.llmKeyPresent) {
     llmKey.placeholder = "•••••••• (key saved to session)";
   }
+  updateAiStateBadge(cfg.llmEnabled, cfg.llmKeyPresent);
 
   setStatusReady(cfg.mode);
+  updatePrivacyReadout();
 }
+
+welcomeDismiss.addEventListener("click", () => {
+  welcomePanel.hidden = true;
+  void chrome.storage.local.remove(STORAGE_KEY_SHOW_WELCOME);
+});
 
 // ─── Load + save ────────────────────────────────────────────────────────
 
@@ -119,6 +141,7 @@ interface PopupConfig {
   endpoint: string;
   llmEnabled: boolean;
   llmKeyPresent: boolean;
+  showWelcome: boolean;
 }
 
 async function loadConfig(): Promise<PopupConfig> {
@@ -127,6 +150,7 @@ async function loadConfig(): Promise<PopupConfig> {
     STORAGE_KEY_RPC,
     STORAGE_KEY_ENDPOINT,
     STORAGE_KEY_LLM_ENABLED,
+    STORAGE_KEY_SHOW_WELCOME,
   ]);
   let llmKeyPresent = false;
   try {
@@ -147,6 +171,7 @@ async function loadConfig(): Promise<PopupConfig> {
     ),
     llmEnabled: local[STORAGE_KEY_LLM_ENABLED] === true,
     llmKeyPresent,
+    showWelcome: local[STORAGE_KEY_SHOW_WELCOME] === true,
   };
 }
 
@@ -171,6 +196,7 @@ async function onModeChange(): Promise<void> {
   const mode = modeLocal.checked ? "local" : "hosted";
   await chrome.storage.local.set({ [STORAGE_KEY_MODE]: mode });
   updateModeUi();
+  void updatePrivacyReadout();
 }
 
 modeLocal.addEventListener("change", () => void onModeChange());
@@ -197,12 +223,14 @@ async function saveRpc(): Promise<void> {
   }
   await chrome.storage.local.set({ [STORAGE_KEY_RPC]: raw });
   showResult(rpcResult, "Saved.", "ok");
+  void updatePrivacyReadout();
 }
 
 async function resetRpc(): Promise<void> {
   await chrome.storage.local.remove(STORAGE_KEY_RPC);
   rpcInput.value = DEFAULT_RPC_URL;
   showResult(rpcResult, "Reset to default.", "ok");
+  void updatePrivacyReadout();
 }
 
 async function testRpc(): Promise<void> {
@@ -321,7 +349,14 @@ llmEnabled.addEventListener("change", () => {
     [STORAGE_KEY_LLM_MODEL]: DEFAULT_LLM_MODEL,
   });
   updateLlmConfigVisibility();
+  void refreshAiState();
 });
+
+async function refreshAiState(): Promise<void> {
+  const cfg = await loadConfig();
+  updateAiStateBadge(cfg.llmEnabled, cfg.llmKeyPresent);
+  await updatePrivacyReadout();
+}
 
 llmSave.addEventListener("click", () => void saveLlmKey());
 llmForget.addEventListener("click", () => void forgetLlmKey());
@@ -356,6 +391,7 @@ async function saveLlmKey(): Promise<void> {
     "Key saved to this browser session. Will be cleared when the browser closes.",
     "ok",
   );
+  await refreshAiState();
 }
 
 async function forgetLlmKey(): Promise<void> {
@@ -369,6 +405,7 @@ async function forgetLlmKey(): Promise<void> {
   llmKey.value = "";
   llmKey.placeholder = "Google Gemini API key";
   showResult(llmResult, "Key forgotten.", "ok");
+  await refreshAiState();
 }
 
 async function testLlmKey(): Promise<void> {
@@ -426,6 +463,63 @@ async function testLlmKey(): Promise<void> {
 function setStatusReady(mode: "local" | "hosted"): void {
   dot.classList.remove("err");
   statusText.textContent = mode === "local" ? "local" : "hosted";
+}
+
+// ─── AI state badge (inside the <details> summary) ─────────────────────
+
+function updateAiStateBadge(enabled: boolean, keyPresent: boolean): void {
+  if (enabled && keyPresent) {
+    aiState.textContent = "on · your key";
+    aiState.classList.add("on");
+  } else if (enabled) {
+    aiState.textContent = "on · no key";
+    aiState.classList.remove("on");
+  } else {
+    aiState.textContent = "off";
+    aiState.classList.remove("on");
+  }
+}
+
+// ─── Privacy readout (pinned footer, live updates as settings change) ──
+
+async function updatePrivacyReadout(): Promise<void> {
+  const cfg = await loadConfig();
+  const parts: string[] = [];
+
+  // Engine
+  parts.push(
+    cfg.mode === "local"
+      ? `<span class="field">Local engine</span>`
+      : `<span class="field warn">Hosted analyzer</span>`,
+  );
+
+  // RPC
+  const isDefaultRpc = cfg.rpcUrl === DEFAULT_RPC_URL;
+  parts.push(
+    isDefaultRpc
+      ? `<span>default RPC</span>`
+      : `<span>custom RPC</span>`,
+  );
+
+  // AI
+  if (cfg.llmEnabled && cfg.llmKeyPresent) {
+    parts.push(
+      `<span class="field">AI on (Gemini, your key)</span>`,
+    );
+  } else if (cfg.llmEnabled) {
+    parts.push(`<span>AI enabled, no key</span>`);
+  } else {
+    parts.push(`<span>no AI</span>`);
+  }
+
+  // Server contact statement
+  parts.push(
+    cfg.mode === "hosted"
+      ? `<span class="field warn">TxGuardian server: contacted</span>`
+      : `<span class="field">TxGuardian server: not contacted</span>`,
+  );
+
+  privacyReadout.innerHTML = parts.join(" · ");
 }
 
 // ─── Shared result helper ───────────────────────────────────────────────
