@@ -19,7 +19,8 @@ export interface AnalyzeRequest {
   id: string;
   /** Base64-serialized transaction, no signatures. */
   base64: string;
-  /** Origin of the dApp page (for telemetry / display). */
+  /** Origin of the dApp page — used only for display in the modal
+   *  header. Never persisted; never sent anywhere else. */
   origin: string;
 }
 
