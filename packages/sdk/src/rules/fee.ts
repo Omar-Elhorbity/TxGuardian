@@ -1,4 +1,3 @@
-import type { TxRiskFlag } from "../types";
 import { COMPUTE_BUDGET_PROGRAM_ID } from "../constants";
 import type { Rule } from "./index";
 
