@@ -6,7 +6,40 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseTransaction, ParseError } from "../src/parser";
+import {
+  Connection,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import {
+  parseTransaction,
+  ParseError,
+  toVersionedTransaction,
+} from "../src/parser";
+
+// No ALTs in these fixtures, so no RPC is hit — a bare stub suffices.
+const STUB_CONN = {} as unknown as Connection;
+const ZERO_BLOCKHASH = "11111111111111111111111111111111";
+
+function v0Transfer(): { vtx: VersionedTransaction; payer: Keypair } {
+  const payer = Keypair.generate();
+  const dest = Keypair.generate();
+  const msg = new TransactionMessage({
+    payerKey: payer.publicKey,
+    recentBlockhash: ZERO_BLOCKHASH,
+    instructions: [
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: dest.publicKey,
+        lamports: 1000,
+      }),
+    ],
+  }).compileToV0Message();
+  return { vtx: new VersionedTransaction(msg), payer };
+}
 
 // We don't need a real Connection for these tests — every failure case
 // rejects before any RPC call. Cast a stub through unknown to satisfy
@@ -42,5 +75,55 @@ describe("parseTransaction — input validation", () => {
     await expect(
       parseTransaction("AAAA", STUB_CONNECTION),
     ).rejects.toBeInstanceOf(ParseError);
+  });
+});
+
+describe("parseTransaction — success paths", () => {
+  it("parses a base64 v0 transaction (instructions, fee payer, signers)", async () => {
+    const { vtx, payer } = v0Transfer();
+    const base64 = Buffer.from(vtx.serialize()).toString("base64");
+    const parsed = await parseTransaction(base64, STUB_CONN);
+
+    expect(parsed.version).toBe(0);
+    expect(parsed.feePayer).toBe(payer.publicKey.toBase58());
+    expect(parsed.signers[0]).toBe(payer.publicKey.toBase58());
+    expect(parsed.instructions).toHaveLength(1);
+    expect(parsed.instructions[0]!.programId).toBe(
+      SystemProgram.programId.toBase58(),
+    );
+    expect(parsed.altResolved).toBe(true);
+  });
+
+  it("accepts a VersionedTransaction object directly", async () => {
+    const { vtx, payer } = v0Transfer();
+    const parsed = await parseTransaction(vtx, STUB_CONN);
+    expect(parsed.feePayer).toBe(payer.publicKey.toBase58());
+  });
+
+  it("compiles + parses a legacy Transaction", async () => {
+    const payer = Keypair.generate();
+    const dest = Keypair.generate();
+    const tx = new Transaction();
+    tx.add(
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: dest.publicKey,
+        lamports: 5,
+      }),
+    );
+    tx.feePayer = payer.publicKey;
+    tx.recentBlockhash = ZERO_BLOCKHASH;
+
+    const parsed = await parseTransaction(tx, STUB_CONN);
+    expect(parsed.version).toBe("legacy");
+    expect(parsed.instructions).toHaveLength(1);
+    expect(parsed.feePayer).toBe(payer.publicKey.toBase58());
+  });
+
+  it("toVersionedTransaction round-trips a base64 input", () => {
+    const { vtx } = v0Transfer();
+    const base64 = Buffer.from(vtx.serialize()).toString("base64");
+    const out = toVersionedTransaction(base64);
+    expect(out).toBeInstanceOf(VersionedTransaction);
   });
 });

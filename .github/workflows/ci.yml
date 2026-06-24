@@ -21,6 +21,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # See the typecheck job for why pnpm/action-setup runs before setup-node.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint all workspaces (sdk + web + extension)
+        run: pnpm -r lint
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
@@ -46,7 +61,7 @@ jobs:
         run: pnpm --filter @txguardian/extension typecheck
 
   test:
-    name: SDK tests
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,8 +77,14 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: SDK tests (vitest)
-        run: pnpm --filter @txguardian/sdk test
+      # SDK runs with coverage; vitest fails the job if coverage drops below
+      # the thresholds in packages/sdk/vitest.config.ts (issue #19).
+      - name: SDK tests + coverage gate
+        run: pnpm --filter @txguardian/sdk test:coverage
+      - name: Web API-route tests
+        run: pnpm --filter @txguardian/web test
+      - name: Extension message-wiring tests
+        run: pnpm --filter @txguardian/extension test
 
   build:
     name: Build
