@@ -28,11 +28,10 @@ export default function PrivacyPage() {
         <p className="mt-3 text-[14px] leading-[1.65] text-text-secondary">
           The verdict engine ships inside the extension. When a dApp asks
           you to sign, the analysis runs in your service worker — not on
-          our server. There are two optional opt-ins (hosted analyzer for
-          users without a Solana RPC; AI prose explanation via your own
-          Gemini key) that broaden the trust circle in different ways.
-          Both are off by default. This page describes exactly what flows
-          where in each configuration.
+          our server. One optional opt-in (AI prose explanation via your
+          own Gemini key) broadens the trust circle to Google for the
+          translation step. It&apos;s off by default. This page describes
+          exactly what flows where in each configuration.
         </p>
       </header>
 
@@ -52,7 +51,7 @@ export default function PrivacyPage() {
             </thead>
             <tbody className="text-text-secondary">
               <ModeRow
-                config="Extension default (local engine, no AI)"
+                config="Extension (no AI)"
                 txg="Never contacted"
                 rpc="Sees the tx for simulation + registry lookup"
                 google="Never contacted"
@@ -63,13 +62,6 @@ export default function PrivacyPage() {
                 txg="Never contacted"
                 rpc="Sees the tx (as above)"
                 google="Sees decoded summaries + flags (your key used)"
-              />
-              <ModeRow
-                config="Extension hosted fallback (opt-in)"
-                txg="Sees the full transaction bytes"
-                rpc="(via our server, not yours)"
-                google="(via our server, our key)"
-                warn
               />
               <ModeRow
                 config="Web demo at /scan or /playground"

@@ -42,20 +42,15 @@ export default defineManifest({
   },
   permissions: ["storage"],
   // host_permissions covers:
-  //   1. Default Solana RPCs (devnet + mainnet + testnet) for local-mode
+  //   1. Default Solana RPCs (devnet + mainnet + testnet) for engine
   //      simulation + on-chain registry lookups.
   //   2. Common third-party Solana RPC providers (Helius, QuickNode, Triton,
   //      Alchemy) — covers the 95% of users who'll override to a paid RPC.
-  //   3. The hosted analyzer endpoint, used only when the user selects
-  //      "hosted fallback" mode in the popup.
-  //   4. localhost:3000 for local development against pnpm dev.
+  //   3. Gemini API for the optional BYO-key AI translator.
   //
   // Users who configure a custom RPC outside these patterns need to grant
-  // permission at runtime via chrome.permissions.request() — handled in
-  // Phase 4's popup UX work. For v2 launch the four families above cover
-  // the realistic configuration space.
+  // permission at runtime via chrome.permissions.request().
   host_permissions: [
-    "http://localhost:3000/*",
     "https://api.devnet.solana.com/*",
     "https://api.testnet.solana.com/*",
     "https://api.mainnet-beta.solana.com/*",
@@ -63,8 +58,6 @@ export default defineManifest({
     "https://*.quiknode.pro/*",
     "https://*.rpcpool.com/*",
     "https://*.alchemy.com/*",
-    "https://*.vercel.app/*",
-    // BYO Gemini key — direct browser-to-Google call, never via our server.
     "https://generativelanguage.googleapis.com/*",
   ],
   background: {
