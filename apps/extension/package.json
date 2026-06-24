@@ -9,6 +9,7 @@
     "build": "vite build",
     "package": "vite build && node ./scripts/zip-dist.mjs",
     "preview": "vite preview",
+    "lint": "eslint src",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
