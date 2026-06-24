@@ -1,0 +1,65 @@
+# Weekly dependency vulnerability + license scan.
+#
+# Report-only by design (issue #18): the npm tree carries unreachable
+# dev/build-toolchain CVEs (React-Native/Babel/Metro via the Solana mobile
+# wallet adapter) that would red a blocking gate without improving the shipped
+# artifacts. This job surfaces findings in the run summary instead. Promote the
+# `pnpm audit --prod` step to blocking once the runtime-reachable items in
+# docs/security/dependency-audit-baseline.md §2b are bumped.
+#
+# Runs every Monday 06:00 UTC and on manual dispatch.
+
+name: Dependency Audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  npm-audit:
+    name: pnpm audit + licenses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm/action-setup reads the version from package.json's packageManager
+      # field; it must run BEFORE setup-node (matches .github/workflows/ci.yml).
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Audit (full tree, report-only)
+        if: always()
+        run: |
+          echo "## pnpm audit — full tree" >> "$GITHUB_STEP_SUMMARY"
+          pnpm audit 2>&1 | tail -3 >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Audit (prod tree, runtime-reachable)
+        if: always()
+        run: |
+          echo "## pnpm audit --prod — runtime-reachable" >> "$GITHUB_STEP_SUMMARY"
+          pnpm audit --prod 2>&1 | tail -3 >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: License summary (prod)
+        if: always()
+        run: |
+          echo "## Licenses (prod tree)" >> "$GITHUB_STEP_SUMMARY"
+          pnpm licenses list --prod 2>/dev/null | grep -E "^[A-Za-z(]" \
+            | sort | uniq -c | sort -rn | head -30 >> "$GITHUB_STEP_SUMMARY" || true
+
+  cargo-audit:
+    name: cargo audit (Anchor crate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked || cargo install cargo-audit
+      - name: Audit Rust dependencies (report-only)
+        if: always()
+        run: |
+          echo "## cargo audit" >> "$GITHUB_STEP_SUMMARY"
+          cargo audit 2>&1 | tail -30 >> "$GITHUB_STEP_SUMMARY" || true
