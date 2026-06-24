@@ -33,13 +33,6 @@ export interface AnalyzeResponse {
   result?: TxRiskResultLike;
   /** Present when ok=false. */
   error?: string;
-  /**
-   * Which engine produced the response. Present on both success and
-   * failure paths. Lets the modal render the correct provenance badge
-   * ("Verdict computed locally" vs "Verdict from hosted analyzer") and
-   * give mode-aware error guidance.
-   */
-  engineMode?: "local" | "hosted";
 }
 
 /**

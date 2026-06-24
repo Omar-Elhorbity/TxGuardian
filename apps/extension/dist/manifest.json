@@ -14,7 +14,6 @@
     "storage"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
     "https://api.devnet.solana.com/*",
     "https://api.testnet.solana.com/*",
     "https://api.mainnet-beta.solana.com/*",
@@ -22,7 +21,6 @@
     "https://*.quiknode.pro/*",
     "https://*.rpcpool.com/*",
     "https://*.alchemy.com/*",
-    "https://*.vercel.app/*",
     "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
