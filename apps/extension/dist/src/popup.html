@@ -193,46 +193,6 @@
         text-decoration: underline;
       }
 
-      /* Mode radio group */
-      .modes {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-      }
-      .mode-card {
-        display: block;
-        padding: 10px 12px;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        cursor: pointer;
-        transition:
-          background 0.12s ease,
-          border-color 0.12s ease;
-      }
-      .mode-card:hover {
-        background: var(--surface);
-      }
-      .mode-card.selected {
-        border-color: var(--accent);
-        background: var(--surface);
-      }
-      .mode-card input {
-        display: none;
-      }
-      .mode-card .name {
-        font-size: 12px;
-        font-weight: 600;
-        margin: 0 0 2px;
-      }
-      .mode-card .sub {
-        font-size: 10px;
-        color: var(--text-muted);
-        line-height: 1.4;
-      }
-      .mode-card.selected .name {
-        color: var(--accent);
-      }
-
       /* AI translator toggle row */
       .toggle-row {
         display: flex;
@@ -362,8 +322,8 @@
         color: var(--accent);
       }
     </style>
-    <script type="module" crossorigin src="/assets/chunk-D0yta2Dt.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/chunk-DPYUThHk.js">
+    <script type="module" crossorigin src="/assets/chunk-CcCTDcGU.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/chunk-CKaKi_Sd.js">
   </head>
   <body>
     <div class="header">
@@ -381,42 +341,14 @@
       <p class="welcome-body">
         Every Solana signing request gets checked in this browser
         before your wallet shows its prompt. We don&apos;t see your
-        transactions &mdash; by design. The settings below let you opt
-        in to the hosted server or AI explanations if you want them.
+        transactions &mdash; by design. The settings below let you
+        bring your own RPC and AI key if you want.
       </p>
       <button class="welcome-dismiss" id="welcome-dismiss">Got it</button>
     </div>
 
-    <!-- ─── Engine mode ───────────────────────────────────────── -->
+    <!-- ─── RPC URL ──────────────────────────────────────────── -->
     <div class="section">
-      <p class="label">Engine</p>
-      <div class="modes" role="radiogroup" aria-label="Engine mode">
-        <label class="mode-card" id="mode-local-card">
-          <input
-            type="radio"
-            name="mode"
-            value="local"
-            id="mode-local"
-            checked
-          />
-          <div class="name">Local engine</div>
-          <div class="sub">
-            Verdicts compute on your device. TxGuardian server: not contacted.
-          </div>
-        </label>
-        <label class="mode-card" id="mode-hosted-card">
-          <input type="radio" name="mode" value="hosted" id="mode-hosted" />
-          <div class="name">Hosted fallback</div>
-          <div class="sub">
-            Sends the transaction to our server. Use if you don&apos;t want
-            to bring your own RPC.
-          </div>
-        </label>
-      </div>
-    </div>
-
-    <!-- ─── RPC URL (local mode only) ────────────────────────── -->
-    <div class="section" id="section-rpc">
       <p class="label">Solana RPC</p>
       <div class="row">
         <input
@@ -437,29 +369,6 @@
         <button id="rpc-test" class="primary">Test RPC</button>
       </div>
       <div id="rpc-test-result" class="test-result" hidden></div>
-    </div>
-
-    <!-- ─── Hosted analyzer endpoint (hosted mode only) ───────── -->
-    <div class="section" id="section-endpoint" hidden>
-      <p class="label">Hosted analyzer endpoint</p>
-      <div class="row">
-        <input
-          id="endpoint"
-          type="url"
-          spellcheck="false"
-          autocomplete="off"
-          placeholder="https://your-instance.vercel.app/api/analyze"
-        />
-      </div>
-      <p class="hint">
-        URL of the /api/analyze route. Active only in Hosted fallback mode.
-      </p>
-      <div class="actions">
-        <button id="endpoint-save">Save</button>
-        <button id="endpoint-reset">Reset to default</button>
-        <button id="endpoint-test" class="primary">Test connection</button>
-      </div>
-      <div id="endpoint-test-result" class="test-result" hidden></div>
     </div>
 
     <!-- ─── AI translator (optional, collapsible) ────────────── -->

@@ -1,37 +1,30 @@
 /**
- * Popup script. Manages four user-facing settings:
- *   1. Engine mode — local (default) or hosted fallback
- *   2. RPC URL — Solana RPC for local-mode simulation + registry lookups
- *   3. Hosted analyzer endpoint — for hosted-mode users
- *   4. AI translator — opt-in BYO Gemini key (session-only storage)
+ * Popup script. Manages three user-facing settings:
+ *   1. RPC URL — Solana RPC for simulation + on-chain registry lookups
+ *   2. AI translator — opt-in BYO Gemini key (session-only storage)
+ *   3. Welcome panel — one-time intro on first install
  *
  * Storage policy:
- *   - mode, rpcUrl, analyzerEndpoint, llmEnabled, llmModel → chrome.storage.local (persistent)
- *   - llmKey                                                → chrome.storage.session (cleared on browser close, NEVER on disk)
+ *   - rpcUrl, llmEnabled, llmModel → chrome.storage.local (persistent)
+ *   - llmKey                        → chrome.storage.session (cleared on browser close, NEVER on disk)
  *
  * The popup never sees the LLM key in cleartext after save — once saved
  * to session storage, the input field is replaced with a placeholder
- * indicator. "Forget key" wipes it. This matches the password-field
- * convention so users with shoulder-surfing concerns have a clean UX.
+ * indicator. "Forget key" wipes it.
  */
 
 import {
-  DEFAULT_ANALYZE_ENDPOINT,
-  DEFAULT_ENGINE_MODE,
   DEFAULT_LLM_MODEL,
   DEFAULT_RPC_URL,
   HOSTED_SITE_URL,
-  STORAGE_KEY_ENDPOINT,
   STORAGE_KEY_LLM_ENABLED,
   STORAGE_KEY_LLM_KEY,
   STORAGE_KEY_LLM_MODEL,
-  STORAGE_KEY_MODE,
   STORAGE_KEY_RPC,
   STORAGE_KEY_SHOW_WELCOME,
 } from "./config";
 
 const RPC_TEST_TIMEOUT_MS = 5000;
-const ENDPOINT_TEST_TIMEOUT_MS = 5000;
 const LLM_TEST_TIMEOUT_MS = 8000;
 
 // ─── DOM helpers ────────────────────────────────────────────────────────
@@ -46,25 +39,11 @@ const dot = $<HTMLSpanElement>("status-dot");
 const statusText = $<HTMLSpanElement>("status-text");
 const versionEl = $<HTMLSpanElement>("version");
 
-const modeLocal = $<HTMLInputElement>("mode-local");
-const modeHosted = $<HTMLInputElement>("mode-hosted");
-const modeLocalCard = $<HTMLLabelElement>("mode-local-card");
-const modeHostedCard = $<HTMLLabelElement>("mode-hosted-card");
-
-const sectionRpc = $<HTMLDivElement>("section-rpc");
-const sectionEndpoint = $<HTMLDivElement>("section-endpoint");
-
 const rpcInput = $<HTMLInputElement>("rpc-url");
 const rpcSave = $<HTMLButtonElement>("rpc-save");
 const rpcReset = $<HTMLButtonElement>("rpc-reset");
 const rpcTest = $<HTMLButtonElement>("rpc-test");
 const rpcResult = $<HTMLDivElement>("rpc-test-result");
-
-const endpointInput = $<HTMLInputElement>("endpoint");
-const endpointSave = $<HTMLButtonElement>("endpoint-save");
-const endpointReset = $<HTMLButtonElement>("endpoint-reset");
-const endpointTest = $<HTMLButtonElement>("endpoint-test");
-const endpointResult = $<HTMLDivElement>("endpoint-test-result");
 
 const llmEnabled = $<HTMLInputElement>("llm-enabled");
 const llmConfig = $<HTMLDivElement>("llm-config");
@@ -94,27 +73,14 @@ void init();
 async function init(): Promise<void> {
   const cfg = await loadConfig();
 
-  // Welcome panel: show if the SW set the flag on install/update.
+  // Welcome panel: show if the SW set the flag on install.
   if (cfg.showWelcome) {
     welcomePanel.hidden = false;
-    // Auto-expand the AI details so users see all the options the first
-    // time. Closed by default on subsequent opens.
     aiDetails.open = true;
   }
 
-  // Mode
-  if (cfg.mode === "hosted") {
-    modeHosted.checked = true;
-  } else {
-    modeLocal.checked = true;
-  }
-  updateModeUi();
-
   // RPC
   rpcInput.value = cfg.rpcUrl;
-
-  // Endpoint
-  endpointInput.value = cfg.endpoint;
 
   // LLM
   llmEnabled.checked = cfg.llmEnabled;
@@ -124,7 +90,7 @@ async function init(): Promise<void> {
   }
   updateAiStateBadge(cfg.llmEnabled, cfg.llmKeyPresent);
 
-  setStatusReady(cfg.mode);
+  setStatusReady();
   updatePrivacyReadout();
 }
 
@@ -136,9 +102,7 @@ welcomeDismiss.addEventListener("click", () => {
 // ─── Load + save ────────────────────────────────────────────────────────
 
 interface PopupConfig {
-  mode: "local" | "hosted";
   rpcUrl: string;
-  endpoint: string;
   llmEnabled: boolean;
   llmKeyPresent: boolean;
   showWelcome: boolean;
@@ -146,9 +110,7 @@ interface PopupConfig {
 
 async function loadConfig(): Promise<PopupConfig> {
   const local = await chrome.storage.local.get([
-    STORAGE_KEY_MODE,
     STORAGE_KEY_RPC,
-    STORAGE_KEY_ENDPOINT,
     STORAGE_KEY_LLM_ENABLED,
     STORAGE_KEY_SHOW_WELCOME,
   ]);
@@ -163,12 +125,7 @@ async function loadConfig(): Promise<PopupConfig> {
     llmKeyPresent = false;
   }
   return {
-    mode: local[STORAGE_KEY_MODE] === "hosted" ? "hosted" : DEFAULT_ENGINE_MODE,
     rpcUrl: trimOrDefault(local[STORAGE_KEY_RPC], DEFAULT_RPC_URL),
-    endpoint: trimOrDefault(
-      local[STORAGE_KEY_ENDPOINT],
-      DEFAULT_ANALYZE_ENDPOINT,
-    ),
     llmEnabled: local[STORAGE_KEY_LLM_ENABLED] === true,
     llmKeyPresent,
     showWelcome: local[STORAGE_KEY_SHOW_WELCOME] === true,
@@ -180,27 +137,6 @@ function trimOrDefault(value: unknown, fallback: string): string {
     ? value.trim()
     : fallback;
 }
-
-// ─── Mode (radio toggle) ────────────────────────────────────────────────
-
-function updateModeUi(): void {
-  const isLocal = modeLocal.checked;
-  modeLocalCard.classList.toggle("selected", isLocal);
-  modeHostedCard.classList.toggle("selected", !isLocal);
-  sectionRpc.hidden = !isLocal;
-  sectionEndpoint.hidden = isLocal;
-  setStatusReady(isLocal ? "local" : "hosted");
-}
-
-async function onModeChange(): Promise<void> {
-  const mode = modeLocal.checked ? "local" : "hosted";
-  await chrome.storage.local.set({ [STORAGE_KEY_MODE]: mode });
-  updateModeUi();
-  void updatePrivacyReadout();
-}
-
-modeLocal.addEventListener("change", () => void onModeChange());
-modeHosted.addEventListener("change", () => void onModeChange());
 
 // ─── RPC ────────────────────────────────────────────────────────────────
 
@@ -239,7 +175,6 @@ async function testRpc(): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RPC_TEST_TIMEOUT_MS);
   try {
-    // Minimal JSON-RPC ping. getHealth is universally cheap on Solana RPCs.
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -274,77 +209,12 @@ async function testRpc(): Promise<void> {
   }
 }
 
-// ─── Hosted endpoint ────────────────────────────────────────────────────
-
-endpointSave.addEventListener("click", () => void saveEndpoint());
-endpointReset.addEventListener("click", () => void resetEndpoint());
-endpointTest.addEventListener("click", () => void testEndpoint());
-endpointInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") void saveEndpoint();
-});
-
-async function saveEndpoint(): Promise<void> {
-  const raw = endpointInput.value.trim();
-  if (raw.length === 0 || !isValidHttpUrl(raw)) {
-    showResult(endpointResult, "Not a valid URL.", "err");
-    return;
-  }
-  await chrome.storage.local.set({ [STORAGE_KEY_ENDPOINT]: raw });
-  showResult(endpointResult, "Saved.", "ok");
-}
-
-async function resetEndpoint(): Promise<void> {
-  await chrome.storage.local.remove(STORAGE_KEY_ENDPOINT);
-  endpointInput.value = DEFAULT_ANALYZE_ENDPOINT;
-  showResult(endpointResult, "Reset to default.", "ok");
-}
-
-async function testEndpoint(): Promise<void> {
-  const target = endpointInput.value.trim() || DEFAULT_ANALYZE_ENDPOINT;
-  showResult(endpointResult, `Pinging ${target}…`, "neutral");
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ENDPOINT_TEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(target, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    const ctype = res.headers.get("content-type") ?? "";
-    if (!ctype.includes("application/json")) {
-      showResult(
-        endpointResult,
-        `HTTP ${res.status}, non-JSON — this URL doesn't look like the analyzer.`,
-        "err",
-      );
-      return;
-    }
-    if (res.status >= 500) {
-      showResult(endpointResult, `HTTP ${res.status} — server error.`, "err");
-      return;
-    }
-    showResult(endpointResult, `HTTP ${res.status} — analyzer responding.`, "ok");
-  } catch (err) {
-    clearTimeout(timer);
-    const msg =
-      err instanceof Error
-        ? err.name === "AbortError"
-          ? `Timed out after ${ENDPOINT_TEST_TIMEOUT_MS / 1000}s`
-          : err.message
-        : String(err);
-    showResult(endpointResult, msg, "err");
-  }
-}
-
 // ─── AI translator ──────────────────────────────────────────────────────
 
 llmEnabled.addEventListener("change", () => {
   void chrome.storage.local.set({
     [STORAGE_KEY_LLM_ENABLED]: llmEnabled.checked,
   });
-  // Set the model too (locked to default for v1; future-proof).
   void chrome.storage.local.set({
     [STORAGE_KEY_LLM_MODEL]: DEFAULT_LLM_MODEL,
   });
@@ -409,8 +279,6 @@ async function forgetLlmKey(): Promise<void> {
 }
 
 async function testLlmKey(): Promise<void> {
-  // Resolve the key — prefer the field value if user just typed it,
-  // otherwise read from session storage.
   let key = llmKey.value.trim();
   if (key.length === 0) {
     try {
@@ -433,9 +301,6 @@ async function testLlmKey(): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TEST_TIMEOUT_MS);
   try {
-    // Minimal Gemini API call. The key auth happens via query param.
-    // We use the listModels endpoint — cheapest possible request, returns
-    // the model catalog if the key is valid, 400 if not.
     const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`;
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
@@ -460,9 +325,9 @@ async function testLlmKey(): Promise<void> {
 
 // ─── Status header ──────────────────────────────────────────────────────
 
-function setStatusReady(mode: "local" | "hosted"): void {
+function setStatusReady(): void {
   dot.classList.remove("err");
-  statusText.textContent = mode === "local" ? "local" : "hosted";
+  statusText.textContent = "local";
 }
 
 // ─── AI state badge (inside the <details> summary) ─────────────────────
@@ -486,12 +351,8 @@ async function updatePrivacyReadout(): Promise<void> {
   const cfg = await loadConfig();
   const parts: string[] = [];
 
-  // Engine
-  parts.push(
-    cfg.mode === "local"
-      ? `<span class="field">Local engine</span>`
-      : `<span class="field warn">Hosted analyzer</span>`,
-  );
+  // Engine — always local now.
+  parts.push(`<span class="field">Local engine</span>`);
 
   // RPC
   const isDefaultRpc = cfg.rpcUrl === DEFAULT_RPC_URL;
@@ -512,11 +373,8 @@ async function updatePrivacyReadout(): Promise<void> {
     parts.push(`<span>no AI</span>`);
   }
 
-  // Server contact statement
   parts.push(
-    cfg.mode === "hosted"
-      ? `<span class="field warn">TxGuardian server: contacted</span>`
-      : `<span class="field">TxGuardian server: not contacted</span>`,
+    `<span class="field">TxGuardian server: not contacted</span>`,
   );
 
   privacyReadout.innerHTML = parts.join(" · ");

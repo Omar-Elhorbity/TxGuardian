@@ -8,9 +8,8 @@ A Solana browser extension that checks every signing request in your browser bef
 
 | Configuration | TxGuardian server | Your RPC | Google (Gemini) |
 |---|---|---|---|
-| **Extension default** | Never contacted | Sees the tx for simulation + registry lookup | Never contacted |
+| **Extension** | Never contacted | Sees the tx for simulation + registry lookup | Never contacted |
 | Extension + AI translator (your key) | Never contacted | (as above) | Sees decoded summaries (your key) |
-| Extension hosted fallback (opt-in) | Sees the full tx | (via our server) | (via our server, our key) |
 | Web demo at `/scan` | Sees the full tx | (via our server) | (via our server, our key) |
 
 The default extension setup contacts neither our server nor any LLM provider. Verdicts compute on your device against a Solana RPC of your choice. Full breakdown at [`/privacy`](https://tx-guardian-web.vercel.app/privacy).
@@ -184,7 +183,7 @@ pnpm --filter @txguardian/extension package
 # → apps/web/public/txguardian-extension.zip + .sha256.txt
 ```
 
-The popup lets you switch between local engine (default) and hosted fallback at runtime, override the RPC, and bring your own Gemini key — no rebuild needed.
+The popup lets you override the RPC and bring your own Gemini key — no rebuild needed. The engine always runs locally.
 
 **Tests** (Vitest, runs in CI):
 
