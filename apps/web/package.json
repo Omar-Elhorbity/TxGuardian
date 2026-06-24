@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@txguardian/sdk": "workspace:*",
+    "@sentry/nextjs": "^8.0.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
